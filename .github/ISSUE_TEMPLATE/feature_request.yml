@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest a capability Ssabba should have
+labels: ["enhancement", "status: needs triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation you are in, not only the feature you want.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area does this touch?
+      multiple: true
+      options:
+        - Domain (entities, rating maths)
+        - Web (Blazor host, API endpoints)
+        - Client (WebAssembly components)
+        - Data (EF Core, migrations)
+        - Auth (Keycloak, OIDC)
+        - Deploy (Compose, Traefik, CrowdSec)
+        - Observability (Serilog, Loki, Grafana)
+        - Documentation
+        - CI
+    validations:
+      required: true

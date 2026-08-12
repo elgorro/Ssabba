@@ -1,0 +1,21 @@
+name: Documentation
+description: Something in the wiki or README is wrong, unclear or missing
+labels: ["documentation"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Which page or section?
+      placeholder: docs/content/self-hosting/_index.md, or the README stack table
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or missing?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested wording
