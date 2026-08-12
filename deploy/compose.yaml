@@ -152,7 +152,7 @@ services:
     networks: [internal]
 
   promtail:
-    image: grafana/promtail:3.3.2
+    image: grafana/promtail:3.6.8
     restart: unless-stopped
     command: -config.file=/etc/promtail/promtail.yaml
     volumes:
