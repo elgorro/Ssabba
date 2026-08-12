@@ -8,5 +8,8 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Ssabba.Domain.Tests/Ssabba.Domain.Tests.csproj" />
+    <Project Path="tests/Ssabba.Infrastructure.Tests/Ssabba.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Ssabba.TestSupport/Ssabba.TestSupport.csproj" />
+    <Project Path="tests/Ssabba.Web.Tests/Ssabba.Web.Tests.csproj" />
   </Folder>
 </Solution>

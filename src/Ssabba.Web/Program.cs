@@ -61,7 +61,11 @@ else
     app.UseHsts();
 }
 
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+// Only for the UI: re-executing keeps the request method, so an API 401 would come back as the
+// Blazor page's 400 and the client would never see the real status.
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/api"),
+    branch => branch.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true));
 app.UseHttpsRedirection();
 app.UseAntiforgery();
 app.UseAuthentication();
@@ -87,3 +91,6 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
 }
 
 app.Run();
+
+/// <summary>Exposed so <c>WebApplicationFactory&lt;Program&gt;</c> can boot the real host in tests.</summary>
+public partial class Program;
