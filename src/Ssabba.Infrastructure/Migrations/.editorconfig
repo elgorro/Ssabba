@@ -1,0 +1,6 @@
+# EF Core generates these files; don't hold them to the project's style rules.
+[*.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
+dotnet_diagnostic.IDE0161.severity = none
+dotnet_diagnostic.CA1861.severity = none

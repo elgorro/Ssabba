@@ -1,0 +1,37 @@
+{
+  "realm": "ssabba",
+  "enabled": true,
+  "displayName": "Ssabba",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": true,
+  "verifyEmail": false,
+  "resetPasswordAllowed": true,
+  "sslRequired": "external",
+  "roles": {
+    "realm": [
+      { "name": "player", "description": "Can record their own matches" },
+      { "name": "organizer", "description": "Can manage teams and tournaments" }
+    ]
+  },
+  "defaultRoles": ["player"],
+  "clients": [
+    {
+      "clientId": "ssabba-web",
+      "name": "Ssabba web app",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${SSABBA_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["${SSABBA_REDIRECT_URI}", "${SSABBA_DEV_REDIRECT_URI}"],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${SSABBA_REDIRECT_URI}##${SSABBA_DEV_REDIRECT_URI}"
+      }
+    }
+  ]
+}

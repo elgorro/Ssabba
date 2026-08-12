@@ -1,0 +1,39 @@
+# Development overrides: applied automatically by `docker compose up` in this directory.
+# Ports are published directly so the stack works without DNS or certificates.
+services:
+  db:
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+  keycloak:
+    command: ["start-dev", "--import-realm", "--http-relative-path=/auth"]
+    environment:
+      # Same URL from the browser and from the app container: add "127.0.0.1 keycloak" to
+      # /etc/hosts once, and both sides agree on the issuer.
+      KC_HOSTNAME: http://keycloak:8080/auth
+      KC_HOSTNAME_STRICT: "false"
+      SSABBA_DEV_REDIRECT_URI: ${DEV_REDIRECT_URI:-http://localhost:5080/*}
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+
+  web:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Oidc__Authority: http://keycloak:8080/auth/realms/ssabba
+      Oidc__RequireHttpsMetadata: "false"
+    ports:
+      - "${WEB_PORT:-5080}:8080"
+
+  docs:
+    build: !reset null
+    image: ghcr.io/gohugoio/hugo:v0.164.0
+    working_dir: /project
+    command: ["server", "--bind", "0.0.0.0", "--port", "8080", "--baseURL", "http://localhost:1313/docs/", "--appendPort=false"]
+    volumes:
+      - ../docs:/project
+    ports:
+      - "${DOCS_PORT:-1313}:8080"
+
+  grafana:
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"

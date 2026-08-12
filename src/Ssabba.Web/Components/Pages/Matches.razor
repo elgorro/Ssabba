@@ -1,0 +1,59 @@
+@page "/matches"
+@using Microsoft.EntityFrameworkCore
+@using Ssabba.Infrastructure
+@using Ssabba.Shared
+@using Ssabba.Web.Endpoints
+@inject IDbContextFactory<SsabbaDbContext> DbFactory
+
+<PageTitle>Matches</PageTitle>
+
+<h1>Matches</h1>
+
+<p>
+    <a class="btn btn-primary" href="matches/new">Record a match</a>
+</p>
+
+@if (matches is null)
+{
+    <p><em>Loading…</em></p>
+}
+else if (matches.Count == 0)
+{
+    <p>No matches recorded yet.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Played</th>
+                <th>Location</th>
+                <th>Home</th>
+                <th>Away</th>
+                <th>Sets</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var match in matches)
+            {
+                <tr>
+                    <td>@match.PlayedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@match.Location</td>
+                    <td>@match.HomeTeam</td>
+                    <td>@match.AwayTeam</td>
+                    <td>@match.HomeSetsWon : @match.AwaySetsWon</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<MatchSummary>? matches;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        matches = await MatchQueries.ListAsync(db);
+    }
+}

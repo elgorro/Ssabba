@@ -1,0 +1,16 @@
+@page "/"
+
+<PageTitle>Ssabba</PageTitle>
+
+<h1>Ssabba</h1>
+
+<p>Track your beach volleyball games: players, teams, matches and the ladder that comes out of them.</p>
+
+<AuthorizeView>
+    <Authorized>
+        <p>Signed in as <strong>@context.User.Identity?.Name</strong>. Head to <a href="matches">Matches</a> to record a game.</p>
+    </Authorized>
+    <NotAuthorized>
+        <p><a class="btn btn-primary" href="/authentication/login">Sign in</a> to record matches.</p>
+    </NotAuthorized>
+</AuthorizeView>

@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/.git/
+**/.vs/
+**/.vscode/
+**/.idea/
+docs/public/
+docs/resources/
+deploy/**/data/
+**/.env
+**/*.user

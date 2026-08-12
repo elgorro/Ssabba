@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Ssabba.Domain/Ssabba.Domain.csproj" />
+    <Project Path="src/Ssabba.Infrastructure/Ssabba.Infrastructure.csproj" />
+    <Project Path="src/Ssabba.Shared/Ssabba.Shared.csproj" />
+    <Project Path="src/Ssabba.Web.Client/Ssabba.Web.Client.csproj" />
+    <Project Path="src/Ssabba.Web/Ssabba.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ssabba.Domain.Tests/Ssabba.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

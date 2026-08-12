@@ -1,0 +1,11 @@
+@using Ssabba.Web.Auth
+
+<AuthorizeView>
+    <Authorized>
+        <span class="nav-link">@context.User.Identity?.Name</span>
+        <form action="@AuthenticationExtensions.LogoutPath" method="post">
+            <AntiforgeryToken />
+            <button type="submit" class="nav-link btn btn-link">Sign out</button>
+        </form>
+    </Authorized>
+</AuthorizeView>

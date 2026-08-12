@@ -1,0 +1,6 @@
+# Traefik's JSON access log, parsed by the crowdsecurity/traefik collection.
+# The app's own logs are shipped to Loki instead — CrowdSec has no parser for them.
+filenames:
+  - /var/log/traefik/access.log
+labels:
+  type: traefik

@@ -1,0 +1,24 @@
+http:
+  middlewares:
+    crowdsec:
+      plugin:
+        crowdsec:
+          enabled: "true"
+          crowdsecMode: live
+          crowdsecLapiHost: crowdsec:8080
+          crowdsecLapiScheme: http
+          crowdsecLapiKey: '{{ env "CROWDSEC_LAPI_KEY" }}'
+
+    security-headers:
+      headers:
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: strict-origin-when-cross-origin
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12

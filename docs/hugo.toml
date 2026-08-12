@@ -1,0 +1,21 @@
+baseURL = "/docs/"
+locale = "en-us"
+title = "Ssabba Wiki"
+theme = "hugo-book"
+enableGitInfo = false
+
+# hugo-book expects content under a section; "docs" keeps URLs stable behind Traefik.
+[params]
+  BookTheme = "auto"
+  BookToC = true
+  BookSection = "*"
+  BookRepo = "https://github.com/OWNER/ssabba"
+  BookEditPath = "edit/main/docs"
+  BookSearch = true
+
+[markup.goldmark.renderer]
+  unsafe = true
+
+[markup.highlight]
+  noClasses = false
+  style = "onedark"
