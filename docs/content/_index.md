@@ -15,5 +15,6 @@ by the same stack as the app, under `/docs`.
 
 - **[Rules]({{< relref "rules" >}})** — how Ssabba counts sets, matches and ratings.
 - **[Self-hosting]({{< relref "self-hosting" >}})** — running the stack on your own machine.
+- **[Data model]({{< relref "data-model" >}})** — the entities and how they relate.
 - **[Development]({{< relref "development" >}})** — building and contributing.
 - **[Decisions]({{< relref "adr" >}})** — why the stack looks the way it does.
