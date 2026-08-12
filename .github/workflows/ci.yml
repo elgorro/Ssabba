@@ -24,8 +24,13 @@ jobs:
       - name: Build
         run: dotnet build Ssabba.slnx --configuration Release --no-restore
 
-      - name: Test
-        run: dotnet test Ssabba.slnx --configuration Release --no-build --logger "trx;LogFileName=results.trx"
+      # Split so a failure names the tier. The runner has Docker, so both tiers run here; a
+      # contributor without a container runtime can still run the first one.
+      - name: Test (unit)
+        run: dotnet test Ssabba.slnx --configuration Release --no-build --filter "Category!=Integration" --logger "trx;LogFileName=unit.trx"
+
+      - name: Test (integration)
+        run: dotnet test Ssabba.slnx --configuration Release --no-build --filter "Category=Integration" --logger "trx;LogFileName=integration.trx"
 
       - name: Format
         run: dotnet format Ssabba.slnx --verify-no-changes --no-restore

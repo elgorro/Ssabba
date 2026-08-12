@@ -7,7 +7,8 @@ Keycloak for sign-in, Traefik + CrowdSec at the edge, Serilog JSON → Loki → 
 
 ```bash
 dotnet build Ssabba.slnx                 # note: .slnx, not .sln
-dotnet test  Ssabba.slnx
+dotnet test  Ssabba.slnx                 # everything; the integration tier needs Docker
+dotnet test  Ssabba.slnx --filter "Category!=Integration"   # no container runtime required
 dotnet format Ssabba.slnx                # CI runs --verify-no-changes
 
 cd deploy && docker compose up -d        # dev stack (compose.override.yaml applies)
@@ -26,6 +27,23 @@ dotnet ef migrations add <Name> -p src/Ssabba.Infrastructure -s src/Ssabba.Web -
 | `Ssabba.Infrastructure` | `SsabbaDbContext`, `IEntityTypeConfiguration`s, migrations.             |
 | `Ssabba.Web`            | Blazor host, minimal API under `/api`, authentication, Serilog.         |
 | `Ssabba.Web.Client`     | Components that must run in the browser. No `DbContext` access.         |
+
+### Tests
+
+| Project                       | Tier                                                              |
+| ----------------------------- | ----------------------------------------------------------------- |
+| `Ssabba.Domain.Tests`         | Pure unit tests. No I/O, no doubles — the domain has no deps.     |
+| `Ssabba.Infrastructure.Tests` | `SsabbaDbContext` and migrations against a real Postgres container. |
+| `Ssabba.Web.Tests`            | The real host via `WebApplicationFactory<Program>`.                |
+| `Ssabba.TestSupport`          | `PostgresFixture` (Testcontainers) shared by the two above.        |
+
+Anything needing Docker carries `[Trait(TestCategories.Category, TestCategories.Integration)]`, and
+each test assembly declares its own `PostgresDatabase` collection (xUnit requires the definition to
+live in the assembly that uses it).
+
+No mocking library is used. Data access is exercised against real Postgres; the only substitutes are
+hand-written fakes at external edges — `TestAuthHandler` for the Keycloak handshake, `TimeProvider`
+for the clock. See issue #37 before reaching for a substitute framework.
 
 ## Conventions
 
