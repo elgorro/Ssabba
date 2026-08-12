@@ -62,7 +62,7 @@ services:
     networks: [internal]
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0
+    image: quay.io/keycloak/keycloak:26.7
     restart: unless-stopped
     command: ["start", "--import-realm", "--http-enabled=true", "--proxy-headers=xforwarded"]
     environment:
