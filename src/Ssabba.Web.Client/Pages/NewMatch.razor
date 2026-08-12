@@ -109,6 +109,8 @@ else
 
         var request = new CreateMatchRequest(
             new DateTimeOffset(model.PlayedAt, TimeSpan.Zero),
+            // No court picker yet, so the typed location stays free text.
+            null,
             model.Location,
             model.HomeTeamId,
             model.AwayTeamId,

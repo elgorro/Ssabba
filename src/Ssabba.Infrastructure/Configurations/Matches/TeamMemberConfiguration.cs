@@ -4,13 +4,6 @@ using Ssabba.Domain.Entities;
 
 namespace Ssabba.Infrastructure.Configurations;
 
-public class TeamConfiguration : IEntityTypeConfiguration<Team>
-{
-    public void Configure(EntityTypeBuilder<Team> builder)
-    {
-        builder.Property(t => t.Name).HasMaxLength(120);
-    }
-}
 
 public class TeamMemberConfiguration : IEntityTypeConfiguration<TeamMember>
 {

@@ -4,6 +4,7 @@ namespace Ssabba.Shared;
 public record MatchSummary(
     Guid Id,
     DateTimeOffset PlayedAt,
+    /// <summary>Court name where known, otherwise the free-text note. Ready to render.</summary>
     string? Location,
     string HomeTeam,
     string AwayTeam,
@@ -13,7 +14,9 @@ public record MatchSummary(
 /// <summary>Payload for creating a match together with its set scores.</summary>
 public record CreateMatchRequest(
     DateTimeOffset PlayedAt,
-    string? Location,
+    Guid? CourtId,
+    /// <summary>Used when the match was not played on a court on record.</summary>
+    string? LocationNote,
     Guid HomeTeamId,
     Guid AwayTeamId,
     IReadOnlyList<SetScore> Sets);

@@ -5,6 +5,9 @@ public static class EloRating
 {
     public const int InitialRating = 1000;
 
+    /// <summary>Starting uncertainty around a fresh rating, in rating points.</summary>
+    public const int InitialDeviation = 350;
+
     /// <summary>K-factor: how much a single result can move a rating.</summary>
     public const int KFactor = 24;
 
