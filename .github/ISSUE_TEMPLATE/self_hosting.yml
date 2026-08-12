@@ -1,0 +1,40 @@
+name: Self-hosting help
+description: Trouble getting the stack running on your own server
+labels: ["question", "area: deploy"]
+body:
+  - type: checkboxes
+    id: guide
+    attributes:
+      label: Before you start
+      options:
+        - label: I have read the [self-hosting guide](https://github.com/elgorro/Ssabba/blob/main/docs/content/self-hosting/_index.md)
+          required: true
+        - label: I have removed secrets from everything I paste below
+          required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do, and where does it stop?
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Relevant .env settings
+      description: APP_DOMAIN, ACME_EMAIL and any option you changed. Replace every secret with REDACTED.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: ps
+    attributes:
+      label: Output of `docker compose ps`
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs from the failing service
+      description: "`docker compose logs --tail=200 <service>`"
+      render: shell

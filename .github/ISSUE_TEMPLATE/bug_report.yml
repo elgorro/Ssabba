@@ -1,0 +1,71 @@
+name: Bug report
+description: Something in Ssabba does not work as it should
+labels: ["bug", "status: needs triage"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the behaviour you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in as ...
+        2. Open ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Ssabba version or commit
+      placeholder: v0.1.0, or the commit SHA you built from
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How are you running it?
+      options:
+        - Compose, production-shaped (compose.yaml)
+        - Compose, development (with compose.override.yaml)
+        - Locally with dotnet run
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the system?
+      options:
+        - Not sure
+        - App / UI
+        - API
+        - Database or migrations
+        - Sign-in (Keycloak / OIDC)
+        - Deployment (Traefik, CrowdSec, Compose)
+        - Logging and dashboards
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: "`docker compose logs web` — Serilog emits compact JSON. Redact secrets and tokens."
+      render: shell
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and OS
+      placeholder: Firefox 130 on Arch Linux

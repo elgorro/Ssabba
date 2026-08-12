@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or support
+    url: https://github.com/elgorro/Ssabba/discussions/categories/q-a
+    about: Ask in Discussions — questions are answered there, not in the issue tracker.
+  - name: Idea or feedback
+    url: https://github.com/elgorro/Ssabba/discussions/categories/ideas
+    about: Half-formed ideas belong in Discussions; file a feature request once it has taken shape.
+  - name: Documentation and self-hosting guide
+    url: https://github.com/elgorro/Ssabba/tree/main/docs/content
+    about: The wiki, also served at /docs on a running instance.
+  - name: Report a security vulnerability
+    url: https://github.com/elgorro/Ssabba/security/advisories/new
+    about: Report privately through a GitHub security advisory. Never in a public issue.
