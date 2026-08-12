@@ -143,7 +143,7 @@ services:
       traefik.http.services.docs.loadbalancer.server.port: "8080"
 
   loki:
-    image: grafana/loki:3.3.2
+    image: grafana/loki:3.7.6
     restart: unless-stopped
     command: -config.file=/etc/loki/loki.yaml
     volumes:
