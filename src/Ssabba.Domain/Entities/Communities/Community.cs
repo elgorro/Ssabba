@@ -2,7 +2,8 @@ namespace Ssabba.Domain.Entities;
 
 /// <summary>
 /// A group of people who play together: a club, a regular round, a beach. Everything a group owns
-/// hangs off a community, and a self-hosted instance may run more than one.
+/// hangs off a community. An instance normally runs exactly one; the schema permits several, but
+/// there is no tenancy framework behind it — see ADR-0002.
 /// </summary>
 public class Community
 {

@@ -24,6 +24,13 @@ docker compose -f compose.yaml up -d --build
 The app applies its database migrations on startup, so upgrades are a `docker compose pull &&
 docker compose up -d`.
 
+## Your community
+
+Everything Ssabba stores belongs to a **community**: your club, your regular round, your beach. The
+first person to sign in creates it, and one community per instance is the expected setup — the rest
+of this guide assumes it. An instance can hold several, at the cost of the caveats in
+[Concept]({{< relref "../concept" >}}).
+
 ## Services
 
 | Service    | Purpose                                    | URL                          |

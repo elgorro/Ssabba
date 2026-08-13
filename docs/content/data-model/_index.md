@@ -13,7 +13,9 @@ Everything Ssabba stores lives in one PostgreSQL database, described by entities
 
 A **community** is the unit of ownership: almost every table carries a `CommunityId`. A
 **community member** is a player's presence inside one community, and it is that membership — not
-the player — that holds the rating, casts votes, owes dues and organises sessions.
+the player — that holds the rating, casts votes, owes dues and organises sessions. An instance
+normally runs a single community; see [Concept]({{< relref "../concept" >}}) for what that means and
+what changes if you run several.
 
 ```mermaid
 flowchart TD

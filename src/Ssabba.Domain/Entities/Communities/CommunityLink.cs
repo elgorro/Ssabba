@@ -3,7 +3,8 @@ namespace Ssabba.Domain.Entities;
 /// <summary>
 /// A federation link to a community on another instance, so two groups can eventually share
 /// tournaments or court bookings. Nothing consumes this yet; it exists so the identifiers stay
-/// stable and the schema does not need rewriting when federation arrives.
+/// stable and the schema does not need rewriting when federation arrives. See ADR-0002 for the
+/// reasoning and the questions still open.
 /// </summary>
 public class CommunityLink
 {

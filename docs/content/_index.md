@@ -13,6 +13,8 @@ by the same stack as the app, under `/docs`.
 
 ## Where to go
 
+- **[Concept]({{< relref "concept" >}})** — what a community is, one per instance, and the
+  planned network between instances.
 - **[Rules]({{< relref "rules" >}})** — how Ssabba counts sets, matches and ratings.
 - **[Self-hosting]({{< relref "self-hosting" >}})** — running the stack on your own machine.
 - **[Data model]({{< relref "data-model" >}})** — the entities and how they relate.

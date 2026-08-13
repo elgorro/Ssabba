@@ -113,4 +113,11 @@ only among rows where `DeletedAt IS NULL`, so a deleted player does not block re
 by request (`JoinRequest`). A partial unique index on `(CommunityId, PlayerId) WHERE Status = 0`
 allows exactly one pending request at a time while keeping the history of decided ones.
 
-`CommunityLink` is a stub for future federation between instances; nothing consumes it yet.
+**`CommunityLink` is a stub for future federation between instances; nothing consumes it yet.**
+It records the address of a community on another instance (`TargetCommunityUri`), the
+`PublicKeyId` that identifies it once a handshake confirms the link, the hash of the secret both
+sides present, a scope (`SharedTournaments`, `SharedCourts` or `Full`) and a status
+(`Proposed → Active`, `Suspended` or `Revoked`). It exists so the identifiers stay stable and the
+schema does not need rewriting when federation arrives. See
+[Concept]({{< relref "../concept" >}}) and
+[ADR-0002]({{< relref "../adr/0002-tenancy-and-federation" >}}).
