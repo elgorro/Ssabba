@@ -42,6 +42,10 @@ flowchart TD
   There is no global query filter — queries must exclude deleted rows themselves.
 - **Uniqueness** is frequently partial: a unique index with a `WHERE` clause, e.g. one current
   season per community, one outstanding loan per equipment item.
+- **Polymorphic targets** are the one exception to foreign keys. `Reaction`, `ShareLink` and
+  `AbuseReport` name what they point at with a `TargetKind` enum plus a bare `Guid`, so the database
+  cannot cascade: deleting a target must remove them explicitly. See
+  [Social and moderation]({{< relref "social-and-moderation" >}}).
 - **Delete behaviour** encodes intent. `Cascade` for things owned by their parent, `SetNull` for
   optional references, `Restrict` for anything the books or the ladder depend on.
 
@@ -57,3 +61,7 @@ flowchart TD
   equipment, service requests.
 - **[Privacy and notifications]({{< relref "privacy-and-notifications" >}})** — media, consent,
   audit, the notification outbox.
+- **[Social and moderation]({{< relref "social-and-moderation" >}})** — reactions, share links,
+  blocks, reports, feedback, community rule documents.
+- **[Discovery and recognition]({{< relref "discovery-and-recognition" >}})** — visibility, skill
+  bands, playing interests, badges.
