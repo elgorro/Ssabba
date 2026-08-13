@@ -6,6 +6,12 @@ ladder that comes out of them.
 > Status: early. The base stack is in place (app, database, sign-in, wiki, reverse proxy, logging); the
 > feature set is deliberately small.
 
+Everything hangs off a **community** — a club, a regular round, a beach. One instance normally runs
+one community, and a rating belongs to a person's membership in it rather than to the person. Linking
+communities on different instances into a network is planned and sketched in the schema, but not yet
+built. See the [concept page](docs/content/concept/_index.md) and
+[ADR-0002](docs/content/adr/0002-tenancy-and-federation.md).
+
 ## Stack
 
 | Layer          | Choice                                                      |
