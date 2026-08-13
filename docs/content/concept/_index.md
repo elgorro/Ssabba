@@ -42,6 +42,28 @@ in one group and a newcomer in another, and both are true at once. This is what 
 communities coherent side by side, and it is also the reason a rating cannot simply travel between
 them. See [Identity and communities]({{< relref "../data-model/identity-and-communities" >}}).
 
+## The group's life, not a network
+
+A community owns more than its fixtures and its books. It has rules that have nothing to do with
+volleyball — who may bring a guest, what happens to the ball money, how people speak to each other —
+and it has ways of recognising people that the ladder cannot express. Both are community-scoped for
+the same reason the rating is: they mean what *this* group says they mean. A `CommunityRuleDocument`
+is versioned and may require acceptance; a `Badge` is defined and awarded inside one community and
+does not travel.
+
+The social surfaces are kept deliberately thin. Reactions attach to a match, a session, a photo or a
+poll and are read there; a share link is a read-only window onto one of them for someone with no
+account. There is no feed, no follower graph and no messaging — the group is the point, and every
+group already has somewhere to chat. Safety is the part that is not optional: blocking is
+player-to-player and instance-wide, reports go to a queue, and feedback can be genuinely anonymous.
+None of it may rewrite the ladder, which stays a factual record of games played.
+
+Discovery is the one surface that looks outward, and it is opt-in. Because a rating means nothing
+outside its community, discovery filters on a coarse self-declared band instead.
+
+See [Experience]({{< relref "../experience" >}}) and
+[ADR-0003]({{< relref "../adr/0003-social-surfaces-and-moderation" >}}).
+
 ## A network of communities
 
 Clubs are not islands. People move between beaches, tournaments draw entries from several groups,

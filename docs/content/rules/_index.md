@@ -5,6 +5,14 @@ weight: 10
 
 # Rules and scoring
 
+Three different things go by the name "rules" here, and they are kept apart:
+
+- **[The official rules]({{< relref "official" >}})** of beach volleyball — external, published by
+  FIVB, summarised and linked rather than reproduced.
+- **[House rules]({{< relref "house-rules" >}})** — how a group deviates from them, as a `RuleSet`;
+  and the group's own rules that have nothing to do with volleyball, as a `CommunityRuleDocument`.
+- **The counting below** — how Ssabba turns sets into matches and matches into a ladder.
+
 ## Matches and sets
 
 A match is a series of sets between two teams. Ssabba stores the points of every set rather than only
@@ -24,3 +32,8 @@ newRating = rating + K * (actualScore - expected)
 
 `actualScore` is 1 for a win, 0.5 for a draw and 0 for a loss. Beating a stronger opponent moves the
 rating more than beating a weaker one, and the pair's gains and losses cancel out.
+
+A rating belongs to a `CommunityMember`, not to a `Player`, and is meaningful only inside that
+community — see [Concept]({{< relref "../concept" >}}). Where a level has to be shown to strangers,
+Ssabba uses a self-declared band instead; see
+[Discovery]({{< relref "../experience/discovery" >}}).
