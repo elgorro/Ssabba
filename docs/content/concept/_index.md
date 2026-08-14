@@ -58,6 +58,11 @@ group already has somewhere to chat. Safety is the part that is not optional: bl
 player-to-player and instance-wide, reports go to a queue, and feedback can be genuinely anonymous.
 None of it may rewrite the ladder, which stays a factual record of games played.
 
+The evening itself is the one part of a club's life that is not administration, and it is where the
+app has to earn its place: fifty people, five nets, and one person deciding who plays next for two
+hours. Ssabba proposes and records there; it never allocates a court by itself, and it works for a
+group where only the organiser is holding a phone. See [Game day]({{< relref "../game-day" >}}).
+
 Discovery is the one surface that looks outward, and it is opt-in. Because a rating means nothing
 outside its community, discovery filters on a coarse self-declared band instead.
 
