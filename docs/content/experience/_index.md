@@ -22,6 +22,7 @@ moves. Everything here hangs off that loop. Nothing here is a destination in its
 | **The ladder** | Standing within *this* community. Never a global ranking. |
 | **The person** | A profile: what they play, how long they have played, the badges their community gave them — and, if they opted in, that they are looking for someone to play with. |
 | **The community** | Its rules, its seasons, its venues, its members, its books. |
+| **The board** | Game day itself: who is here, which net they are on, who is next. The organiser's screen, and the only one that is used standing up. |
 | **Discovery** | The only surface that looks outward: open sessions and people looking to play, filtered by when, where and roughly how well. |
 
 ## What Ssabba is not
@@ -53,3 +54,6 @@ The reasoning, and what was weighed against what, is in
 - **[Discovery]({{< relref "discovery" >}})** — finding a game by time, place and level, and why the
   filter is not the rating.
 - **[Recognition]({{< relref "recognition" >}})** — badges, and why they belong to the community.
+
+The board has a section of its own: [Game day]({{< relref "../game-day" >}}) covers presence,
+guests, court rotation, matchmaking and tournaments.
