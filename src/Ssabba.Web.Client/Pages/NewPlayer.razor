@@ -1,0 +1,60 @@
+@page "/players/new"
+@using Microsoft.AspNetCore.Authorization
+@using Ssabba.Shared
+@using Ssabba.Web.Client.Components
+@using System.Net.Http.Json
+@attribute [Authorize]
+@rendermode InteractiveAuto
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Add a player</PageTitle>
+
+<h1>Add a player</h1>
+
+<p class="text-body-secondary">
+    Somebody who has never signed in can still be added; they take over the record when they do.
+</p>
+
+<PlayerForm Model="model" FormName="new-player" OnValidSubmit="Save">
+    <button type="submit" class="btn btn-primary" disabled="@saving">Add player</button>
+    <a class="btn btn-secondary" href="players">Cancel</a>
+
+    @if (error is not null)
+    {
+        <p class="text-danger mt-3">@error</p>
+    }
+</PlayerForm>
+
+@code {
+    private readonly PlayerForm.PlayerFormModel model = new();
+    private bool saving;
+    private string? error;
+
+    private async Task Save()
+    {
+        saving = true;
+        error = null;
+
+        var request = new CreatePlayerRequest(
+            model.DisplayName,
+            model.Slug,
+            model.PreferredTimeZone,
+            model.Locale,
+            model.Nickname,
+            model.Role,
+            model.ToProfile());
+
+        var response = await Http.PostAsJsonAsync(ApiRoutes.Players, request);
+
+        saving = false;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            error = $"Saving failed ({(int)response.StatusCode}).";
+            return;
+        }
+
+        Navigation.NavigateTo("players");
+    }
+}

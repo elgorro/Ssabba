@@ -1,0 +1,179 @@
+@using System.ComponentModel.DataAnnotations
+@using Ssabba.Shared
+
+@* The fields shared by adding and editing a player. Saving stays with the page that owns it. *@
+<EditForm Model="Model" OnValidSubmit="OnValidSubmit" FormName="@FormName">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label" for="display-name">Name</label>
+        <InputText id="display-name" class="form-control" @bind-Value="Model.DisplayName" />
+    </div>
+
+    <div class="row">
+        <div class="col mb-3">
+            <label class="form-label" for="slug">Slug</label>
+            <InputText id="slug" class="form-control" @bind-Value="Model.Slug" placeholder="derived from the name" />
+        </div>
+        <div class="col mb-3">
+            <label class="form-label" for="nickname">Nickname in this community</label>
+            <InputText id="nickname" class="form-control" @bind-Value="Model.Nickname" />
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col mb-3">
+            <label class="form-label" for="role">Role</label>
+            <InputSelect id="role" class="form-select" @bind-Value="Model.Role">
+                @foreach (var role in Roles)
+                {
+                    <option value="@role">@role</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="col mb-3">
+            <label class="form-label" for="time-zone">Time zone</label>
+            <InputText id="time-zone" class="form-control" @bind-Value="Model.PreferredTimeZone" placeholder="Europe/Zurich" />
+        </div>
+        <div class="col mb-3">
+            <label class="form-label" for="locale">Language</label>
+            <InputText id="locale" class="form-control" @bind-Value="Model.Locale" placeholder="de-CH" />
+        </div>
+    </div>
+
+    <h2 class="h5">Profile</h2>
+    <p class="text-body-secondary">Self-reported and advisory. None of it feeds the ladder.</p>
+
+    <div class="row">
+        <div class="col mb-3">
+            <label class="form-label" for="height">Height (cm)</label>
+            <InputNumber id="height" class="form-control" @bind-Value="Model.HeightCm" />
+        </div>
+        <div class="col mb-3">
+            <label class="form-label" for="self-rated">Self-rated level (1–10)</label>
+            <InputNumber id="self-rated" class="form-control" @bind-Value="Model.SelfRatedLevel" />
+        </div>
+        <div class="col mb-3">
+            <label class="form-label" for="playing-since">Playing since</label>
+            <InputNumber id="playing-since" class="form-control" @bind-Value="Model.PlayingSince" />
+        </div>
+    </div>
+
+    <fieldset class="mb-3">
+        <legend class="form-label">Preferred positions</legend>
+        @foreach (var position in Positions)
+        {
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="@($"position-{position}")"
+                       checked="@Model.PreferredPositions.Contains(position)"
+                       @onchange="e => TogglePosition(position, (bool?)e.Value == true)" />
+                <label class="form-check-label" for="@($"position-{position}")">@position</label>
+            </div>
+        }
+    </fieldset>
+
+    <div class="form-check mb-3">
+        <InputCheckbox id="left-handed" class="form-check-input" @bind-Value="Model.IsLeftHanded" />
+        <label class="form-check-label" for="left-handed">Left-handed</label>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="bio">Bio</label>
+        <InputTextArea id="bio" class="form-control" rows="3" @bind-Value="Model.Bio" />
+    </div>
+
+    @ChildContent
+</EditForm>
+
+@code {
+    /// <summary>Roles an organiser may hand out here. Owner is not one of them.</summary>
+    private static readonly string[] Roles = ["Guest", "Member", "Organizer", "Admin"];
+
+    private static readonly string[] Positions =
+        ["Defender", "Blocker", "Setter", "Outside", "Opposite", "Middle", "Libero"];
+
+    [Parameter, EditorRequired]
+    public PlayerFormModel Model { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public string FormName { get; set; } = "player";
+
+    [Parameter]
+    public EventCallback OnValidSubmit { get; set; }
+
+    /// <summary>The buttons, which differ between adding and editing.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private void TogglePosition(string position, bool selected)
+    {
+        if (selected)
+        {
+            if (!Model.PreferredPositions.Contains(position))
+            {
+                Model.PreferredPositions.Add(position);
+            }
+        }
+        else
+        {
+            Model.PreferredPositions.Remove(position);
+        }
+    }
+
+    /// <summary>Flattened for binding; the page turns it into the request record.</summary>
+    public sealed class PlayerFormModel
+    {
+        [Required, StringLength(120)]
+        public string DisplayName { get; set; } = string.Empty;
+
+        [StringLength(120)]
+        public string? Slug { get; set; }
+
+        [StringLength(120)]
+        public string? Nickname { get; set; }
+
+        public string Role { get; set; } = "Member";
+
+        [StringLength(64)]
+        public string? PreferredTimeZone { get; set; }
+
+        [StringLength(16)]
+        public string? Locale { get; set; }
+
+        [Range(80, 260)]
+        public int? HeightCm { get; set; }
+
+        [Range(1, 10)]
+        public int? SelfRatedLevel { get; set; }
+
+        [Range(1900, 2200)]
+        public int? PlayingSince { get; set; }
+
+        public List<string> PreferredPositions { get; set; } = [];
+
+        public bool IsLeftHanded { get; set; }
+
+        [StringLength(2000)]
+        public string? Bio { get; set; }
+
+        public static PlayerFormModel From(PlayerDetail player) => new()
+        {
+            DisplayName = player.DisplayName,
+            Slug = player.Slug,
+            Nickname = player.Nickname,
+            Role = player.Role,
+            PreferredTimeZone = player.PreferredTimeZone,
+            Locale = player.Locale,
+            HeightCm = player.Profile.HeightCm,
+            SelfRatedLevel = player.Profile.SelfRatedLevel,
+            PlayingSince = player.Profile.PlayingSince,
+            PreferredPositions = [.. player.Profile.PreferredPositions],
+            IsLeftHanded = player.Profile.IsLeftHanded,
+            Bio = player.Profile.Bio,
+        };
+
+        public PlayerProfileDto ToProfile() =>
+            new(HeightCm, PreferredPositions, SelfRatedLevel, PlayingSince, Bio, IsLeftHanded);
+    }
+}

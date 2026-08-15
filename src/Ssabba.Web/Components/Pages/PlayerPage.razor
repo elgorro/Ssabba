@@ -1,0 +1,127 @@
+@page "/players/{Slug}"
+@using Microsoft.EntityFrameworkCore
+@using Ssabba.Infrastructure
+@using Ssabba.Shared
+@using Ssabba.Web.Endpoints
+@inject IDbContextFactory<SsabbaDbContext> DbFactory
+@inject NavigationManager Navigation
+
+<PageTitle>@(player?.DisplayName ?? "Player")</PageTitle>
+
+@if (player is null)
+{
+    <p><em>Loading…</em></p>
+}
+else
+{
+    <h1>
+        @player.DisplayName
+        @if (player.IsRetired)
+        {
+            <span class="badge text-bg-secondary align-middle ms-2">Retired</span>
+        }
+    </h1>
+
+    @if (player.Nickname is not null)
+    {
+        <p class="text-body-secondary">Known here as “@player.Nickname”.</p>
+    }
+
+    <p>
+        <a class="btn btn-secondary" href="players/@player.Id/edit">Edit</a>
+    </p>
+
+    <dl class="row">
+        <dt class="col-sm-3">Role</dt>
+        <dd class="col-sm-9">@player.Role</dd>
+
+        <dt class="col-sm-3">Rating</dt>
+        <dd class="col-sm-9">@player.Rating</dd>
+
+        <dt class="col-sm-3">Matches played</dt>
+        <dd class="col-sm-9">@player.MatchesPlayed</dd>
+
+        <dt class="col-sm-3">Joined</dt>
+        <dd class="col-sm-9">@player.JoinedAt.ToLocalTime().ToString("yyyy-MM-dd")</dd>
+
+        @if (player.LeftAt is { } leftAt)
+        {
+            <dt class="col-sm-3">Left</dt>
+            <dd class="col-sm-9">@leftAt.ToLocalTime().ToString("yyyy-MM-dd")</dd>
+        }
+
+        <dt class="col-sm-3">Account</dt>
+        <dd class="col-sm-9">@(player.HasAccount ? "Signed in at least once" : "Entered by hand, never signed in")</dd>
+
+        @if (player.PreferredTimeZone is not null)
+        {
+            <dt class="col-sm-3">Time zone</dt>
+            <dd class="col-sm-9">@player.PreferredTimeZone</dd>
+        }
+
+        @if (player.Locale is not null)
+        {
+            <dt class="col-sm-3">Language</dt>
+            <dd class="col-sm-9">@player.Locale</dd>
+        }
+    </dl>
+
+    <h2>Profile</h2>
+
+    <dl class="row">
+        @if (player.Profile.PreferredPositions.Count > 0)
+        {
+            <dt class="col-sm-3">Positions</dt>
+            <dd class="col-sm-9">@string.Join(", ", player.Profile.PreferredPositions)</dd>
+        }
+
+        @if (player.Profile.HeightCm is { } height)
+        {
+            <dt class="col-sm-3">Height</dt>
+            <dd class="col-sm-9">@height cm</dd>
+        }
+
+        @if (player.Profile.SelfRatedLevel is { } level)
+        {
+            <dt class="col-sm-3">Self-rated level</dt>
+            <dd class="col-sm-9">@level / 10 <span class="text-body-secondary">(advisory; it never feeds the ladder)</span></dd>
+        }
+
+        @if (player.Profile.PlayingSince is { } since)
+        {
+            <dt class="col-sm-3">Playing since</dt>
+            <dd class="col-sm-9">@since</dd>
+        }
+
+        <dt class="col-sm-3">Handedness</dt>
+        <dd class="col-sm-9">@(player.Profile.IsLeftHanded ? "Left-handed" : "Right-handed")</dd>
+    </dl>
+
+    @if (player.Profile.Bio is not null)
+    {
+        <p>@player.Profile.Bio</p>
+    }
+}
+
+@code {
+    [Parameter]
+    public string Slug { get; set; } = string.Empty;
+
+    private PlayerDetail? player;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var communityId = await PlayerQueries.ResolveCommunityIdAsync(db);
+
+        player = communityId is null
+            ? null
+            : await PlayerQueries.GetBySlugAsync(db, communityId.Value, Slug);
+
+        if (player is null)
+        {
+            Navigation.NavigateTo("not-found");
+        }
+    }
+}
