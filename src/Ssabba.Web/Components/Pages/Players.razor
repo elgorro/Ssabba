@@ -1,0 +1,85 @@
+@page "/players"
+@using Microsoft.EntityFrameworkCore
+@using Ssabba.Infrastructure
+@using Ssabba.Shared
+@using Ssabba.Web.Endpoints
+@inject IDbContextFactory<SsabbaDbContext> DbFactory
+
+<PageTitle>Players</PageTitle>
+
+<h1>Players</h1>
+
+<p>
+    <a class="btn btn-primary" href="players/new">Add a player</a>
+    @if (players is not null)
+    {
+        <a class="btn btn-link" href="@(IncludeRetired ? "players" : "players?includeRetired=true")">
+            @(IncludeRetired ? "Hide retired" : "Show retired")
+        </a>
+    }
+</p>
+
+@if (noCommunity)
+{
+    <p>This instance has no community yet, so there is nobody to list.</p>
+}
+else if (players is null)
+{
+    <p><em>Loading…</em></p>
+}
+else if (players.Count == 0)
+{
+    <p>No players yet.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Rating</th>
+                <th>Matches</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var player in players)
+            {
+                <tr class="@(player.IsRetired ? "text-body-secondary" : null)">
+                    <td>
+                        <a href="players/@player.Slug">@player.DisplayName</a>
+                        @if (player.Nickname is not null)
+                        {
+                            <span class="text-body-secondary">&nbsp;“@player.Nickname”</span>
+                        }
+                        @if (player.IsRetired)
+                        {
+                            <span class="badge text-bg-secondary ms-2">Retired</span>
+                        }
+                    </td>
+                    <td>@player.Role</td>
+                    <td>@player.Rating</td>
+                    <td>@player.MatchesPlayed</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [SupplyParameterFromQuery]
+    public bool IncludeRetired { get; set; }
+
+    private List<PlayerSummary>? players;
+    private bool noCommunity;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var communityId = await PlayerQueries.ResolveCommunityIdAsync(db);
+        noCommunity = communityId is null;
+
+        players = noCommunity ? null : await PlayerQueries.ListAsync(db, communityId!.Value, IncludeRetired);
+    }
+}

@@ -1,0 +1,124 @@
+@page "/players/{Id:guid}/edit"
+@using Microsoft.AspNetCore.Authorization
+@using Ssabba.Shared
+@using Ssabba.Web.Client.Components
+@using System.Net.Http.Json
+@attribute [Authorize]
+@rendermode InteractiveAuto
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Edit player</PageTitle>
+
+<h1>Edit player</h1>
+
+@if (model is null)
+{
+    <p><em>Loading…</em></p>
+}
+else
+{
+    <PlayerForm Model="model" FormName="edit-player" OnValidSubmit="Save">
+        <button type="submit" class="btn btn-primary" disabled="@saving">Save</button>
+        <a class="btn btn-secondary" href="players">Cancel</a>
+
+        @if (isRetired)
+        {
+            <button type="button" class="btn btn-outline-primary float-end" disabled="@saving"
+                    @onclick="() => SetRetired(false)">
+                Reinstate
+            </button>
+        }
+        else
+        {
+            <button type="button" class="btn btn-outline-danger float-end" disabled="@saving"
+                    @onclick="() => SetRetired(true)">
+                Retire
+            </button>
+        }
+
+        <p class="text-body-secondary mt-3">
+            Retiring marks the player as having left the community. Their rating, their matches and
+            every result they were part of stay exactly as they are.
+        </p>
+
+        @if (error is not null)
+        {
+            <p class="text-danger">@error</p>
+        }
+    </PlayerForm>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private PlayerForm.PlayerFormModel? model;
+    private bool isRetired;
+    private bool saving;
+    private string? error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var player = await Http.GetFromJsonAsync<PlayerDetail>($"{ApiRoutes.Players}/{Id}");
+
+        if (player is null)
+        {
+            return;
+        }
+
+        model = PlayerForm.PlayerFormModel.From(player);
+        isRetired = player.IsRetired;
+    }
+
+    private async Task Save()
+    {
+        if (model is null)
+        {
+            return;
+        }
+
+        saving = true;
+        error = null;
+
+        var request = new UpdatePlayerRequest(
+            model.DisplayName,
+            model.Slug,
+            model.PreferredTimeZone,
+            model.Locale,
+            model.Nickname,
+            model.Role,
+            model.ToProfile());
+
+        var response = await Http.PutAsJsonAsync($"{ApiRoutes.Players}/{Id}", request);
+
+        saving = false;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            error = $"Saving failed ({(int)response.StatusCode}).";
+            return;
+        }
+
+        Navigation.NavigateTo("players");
+    }
+
+    private async Task SetRetired(bool retired)
+    {
+        saving = true;
+        error = null;
+
+        var action = retired ? "retire" : "reinstate";
+        var response = await Http.PostAsync($"{ApiRoutes.Players}/{Id}/{action}", content: null);
+
+        saving = false;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            error = $"That failed ({(int)response.StatusCode}).";
+            return;
+        }
+
+        isRetired = retired;
+    }
+}

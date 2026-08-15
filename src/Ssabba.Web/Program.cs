@@ -74,6 +74,7 @@ app.UseAuthorization();
 app.MapStaticAssets();
 app.MapSsabbaAuthEndpoints();
 app.MapMatchEndpoints();
+app.MapPlayerEndpoints();
 app.MapHealthChecks("/healthz").AllowAnonymous();
 
 app.MapRazorComponents<App>()
