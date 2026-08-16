@@ -52,6 +52,7 @@ erDiagram
         Guid CommunityId FK
         string Name "nullable"
         bool IsAdHoc
+        string MemberKey "UK with CommunityId"
     }
     TeamMember {
         Guid TeamId PK,FK
@@ -156,9 +157,16 @@ the journal it can be rebuilt from. The calculation itself is pure and zero-sum 
 `(CommunityId, Status, RatingAppliedAt)` is the queue a rating worker scans: confirmed matches
 whose ratings have not yet been applied.
 
-**Teams are cheap.** `IsAdHoc` marks the throwaway pairings formed for a single evening, as opposed
-to standing teams that enter tournaments. `TeamMember` is a true join table with a composite key,
-the only N:M between players and teams.
+**Teams are cheap, but a lineup is only ever one of them.** `IsAdHoc` marks the throwaway pairings
+formed for a single evening, as opposed to standing teams that enter tournaments. `TeamMember` is a
+true join table with a composite key, the only N:M between players and teams.
+
+`MemberKey` is the natural key the lineup never had: the members' ids, sorted and joined, unique
+within the community (`TeamRoster.Key`). Forming a team looks it up first, so the same pair entered
+again — in either order, from the teams page or from a phone at the net — comes back as the team it
+already is rather than as a second row. Naming such a pairing promotes it in place. That is why
+duplicates are resolved by reuse rather than by an error: at the net, being told "that team exists"
+is useless, and being handed the team is what was meant.
 
 **Deletes are restricted where the ladder depends on them**: `HomeTeam`, `AwayTeam` and `Format`
 cannot be removed while matches reference them, whereas `Season`, `Session` and `Court` are
