@@ -37,6 +37,10 @@ public class SchemaTests(PostgresFixture postgres)
     {
         await using var db = postgres.CreateDbContext();
 
+        // Rolled back at the end: this assembly shares one database and the test above it proves the
+        // tables are empty.
+        await using var transaction = await db.Database.BeginTransactionAsync(TestContext.Current.CancellationToken);
+
         var community = new Community { Name = "Tuesday round", Slug = $"tuesday-{Guid.NewGuid():N}" };
 
         db.Communities.Add(community);
@@ -48,5 +52,7 @@ public class SchemaTests(PostgresFixture postgres)
 
         await Assert.ThrowsAsync<DbUpdateException>(
             () => db.SaveChangesAsync(TestContext.Current.CancellationToken));
+
+        await transaction.RollbackAsync(TestContext.Current.CancellationToken);
     }
 }
