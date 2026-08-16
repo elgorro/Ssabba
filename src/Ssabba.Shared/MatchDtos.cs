@@ -57,3 +57,15 @@ public record UpdateMatchRequest(
     Guid HomeTeamId,
     Guid AwayTeamId,
     IReadOnlyList<SetScore> Sets);
+
+/// <summary>What a caller wants out of the match list: which matches, and which page of them.</summary>
+public record MatchFilter(
+    /// <summary>Matches where this player was in either lineup.</summary>
+    Guid? PlayerId = null,
+    Guid? TeamId = null,
+    /// <summary>Inclusive, in whole days — the list offers a day range, not an instant.</summary>
+    DateOnly? From = null,
+    /// <summary>Inclusive: the whole of this day counts.</summary>
+    DateOnly? To = null,
+    int Page = 1,
+    int PageSize = 25);

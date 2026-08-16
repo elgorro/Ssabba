@@ -13,49 +13,186 @@
     <a class="btn btn-primary" href="matches/new">Record a match</a>
 </p>
 
-@if (matches is null)
+@if (noCommunity)
 {
-    <p><em>Loading…</em></p>
-}
-else if (matches.Count == 0)
-{
-    <p>No matches recorded yet.</p>
+    <p>This instance has no community yet, so there is nothing to list.</p>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Played</th>
-                    <th>Location</th>
-                    <th>Home</th>
-                    <th>Away</th>
-                    <th>Sets</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var match in matches)
+    <form method="get" class="row row-cols-lg-auto g-2 align-items-end mb-3">
+        <div class="col-12">
+            <label class="form-label" for="playerId">Player</label>
+            <select class="form-select" id="playerId" name="playerId">
+                <option value="">Anyone</option>
+                @foreach (var player in players)
                 {
-                    <tr>
-                        <td><a href="matches/@match.Id">@match.PlayedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</a></td>
-                        <td>@match.Location</td>
-                        <td>@match.HomeTeam</td>
-                        <td>@match.AwayTeam</td>
-                        <td>@match.HomeSetsWon : @match.AwaySetsWon</td>
-                    </tr>
+                    <option value="@player.Id" selected="@(PlayerId == player.Id)">@player.DisplayName</option>
                 }
-            </tbody>
-        </table>
-    </div>
+            </select>
+        </div>
+        <div class="col-12">
+            <label class="form-label" for="teamId">Team</label>
+            <select class="form-select" id="teamId" name="teamId">
+                <option value="">Any team</option>
+                @foreach (var team in teams)
+                {
+                    <option value="@team.Id" selected="@(TeamId == team.Id)">@team.DisplayName</option>
+                }
+            </select>
+        </div>
+        <div class="col-12">
+            <label class="form-label" for="from">From</label>
+            <input class="form-control" type="date" id="from" name="from" value="@From?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="col-12">
+            <label class="form-label" for="to">To</label>
+            <input class="form-control" type="date" id="to" name="to" value="@To?.ToString("yyyy-MM-dd")" />
+        </div>
+        @if (PageSize != DefaultPageSize)
+        {
+            <input type="hidden" name="pageSize" value="@PageSize" />
+        }
+        <div class="col-12">
+            <button class="btn btn-secondary" type="submit">Filter</button>
+            @if (IsFiltered)
+            {
+                <a class="btn btn-link" href="matches">Clear</a>
+            }
+        </div>
+    </form>
+
+    @if (matches is null)
+    {
+        <p><em>Loading…</em></p>
+    }
+    else if (matches.TotalCount == 0)
+    {
+        <p>@(IsFiltered ? "No matches match these filters." : "No matches recorded yet.")</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Played</th>
+                        <th>Location</th>
+                        <th>Home</th>
+                        <th>Away</th>
+                        <th>Sets</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var match in matches.Items)
+                    {
+                        <tr>
+                            <td><a href="matches/@match.Id">@match.PlayedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</a></td>
+                            <td>@match.Location</td>
+                            <td>@match.HomeTeam</td>
+                            <td>@match.AwayTeam</td>
+                            <td>@match.HomeSetsWon : @match.AwaySetsWon</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (matches.PageCount > 1)
+        {
+            <nav class="d-flex align-items-center gap-3">
+                @if (matches.Page > 1)
+                {
+                    <a class="btn btn-outline-secondary" href="@PageLink(matches.Page - 1)">Previous</a>
+                }
+                <span class="text-body-secondary">Page @matches.Page of @matches.PageCount</span>
+                @if (matches.Page < matches.PageCount)
+                {
+                    <a class="btn btn-outline-secondary" href="@PageLink(matches.Page + 1)">Next</a>
+                }
+            </nav>
+        }
+    }
 }
 
 @code {
-    private List<MatchSummary>? matches;
+    private const int DefaultPageSize = 25;
 
-    protected override async Task OnInitializedAsync()
+    [SupplyParameterFromQuery]
+    public Guid? PlayerId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public Guid? TeamId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public DateOnly? From { get; set; }
+
+    [SupplyParameterFromQuery]
+    public DateOnly? To { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int? Page { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int? PageSize { get; set; }
+
+    private PagedResult<MatchSummary>? matches;
+    private List<PlayerSummary> players = [];
+    private List<TeamSummary> teams = [];
+    private bool noCommunity;
+
+    private bool IsFiltered => PlayerId is not null || TeamId is not null || From is not null || To is not null;
+
+    protected override async Task OnParametersSetAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        matches = await MatchQueries.ListAsync(db);
+
+        var communityId = await PlayerQueries.ResolveCommunityIdAsync(db);
+        noCommunity = communityId is null;
+
+        if (noCommunity)
+        {
+            return;
+        }
+
+        players = await PlayerQueries.ListAsync(db, communityId!.Value);
+        teams = await TeamQueries.ListAsync(db, communityId.Value);
+
+        matches = await MatchQueries.ListAsync(
+            db,
+            communityId.Value,
+            new MatchFilter(PlayerId, TeamId, From, To, Page ?? 1, PageSize ?? DefaultPageSize));
+    }
+
+    /// <summary>A page link that carries the filters, so paging never quietly widens the list.</summary>
+    private string PageLink(int page)
+    {
+        var query = new List<string> { $"page={page}" };
+
+        if (PlayerId is { } playerId)
+        {
+            query.Add($"playerId={playerId}");
+        }
+
+        if (TeamId is { } teamId)
+        {
+            query.Add($"teamId={teamId}");
+        }
+
+        if (From is { } from)
+        {
+            query.Add($"from={from:yyyy-MM-dd}");
+        }
+
+        if (To is { } to)
+        {
+            query.Add($"to={to:yyyy-MM-dd}");
+        }
+
+        if (PageSize is { } pageSize)
+        {
+            query.Add($"pageSize={pageSize}");
+        }
+
+        return $"matches?{string.Join("&", query)}";
     }
 }

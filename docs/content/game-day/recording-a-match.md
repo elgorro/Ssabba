@@ -63,3 +63,13 @@ would have to move with it; record the right one instead.
 One caveat worth knowing at the net: correcting a match is exact while nobody involved has played
 since. Later matches were rated against the ratings this one set, so an old correction in the middle
 of a busy season is close rather than perfect. Fix it the same evening and it is exact.
+
+## Finding it again
+
+Everything recorded is on **Matches**, most recent first, twenty-five to a page. The filters above
+the table narrow it to one player, one lineup, a range of days, or any combination of those — a
+player matches when they were in either team's lineup, and both ends of a date range are counted in
+whole, so `1 June` to `2 June` includes a match played late on the second.
+
+The filters live in the address, so the list you are looking at is the list you can send to somebody
+else, and paging through it keeps them. Struck matches never appear, however you filter.
