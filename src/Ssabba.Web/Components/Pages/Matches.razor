@@ -23,29 +23,31 @@ else if (matches.Count == 0)
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Played</th>
-                <th>Location</th>
-                <th>Home</th>
-                <th>Away</th>
-                <th>Sets</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var match in matches)
-            {
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
                 <tr>
-                    <td>@match.PlayedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-                    <td>@match.Location</td>
-                    <td>@match.HomeTeam</td>
-                    <td>@match.AwayTeam</td>
-                    <td>@match.HomeSetsWon : @match.AwaySetsWon</td>
+                    <th>Played</th>
+                    <th>Location</th>
+                    <th>Home</th>
+                    <th>Away</th>
+                    <th>Sets</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var match in matches)
+                {
+                    <tr>
+                        <td><a href="matches/@match.Id">@match.PlayedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</a></td>
+                        <td>@match.Location</td>
+                        <td>@match.HomeTeam</td>
+                        <td>@match.AwayTeam</td>
+                        <td>@match.HomeSetsWon : @match.AwaySetsWon</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
 
 @code {

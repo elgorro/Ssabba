@@ -31,6 +31,12 @@ differently changes a number rather than arguing with the software.
 | Touches | Three per side; a block does not count as one | Not modelled — Ssabba records outcomes, not rallies |
 | Serve off the net | A let serve is played on | `RuleSet.LetServeAllowed` |
 
+These are not only stored, they are **enforced on entry**. A recorded match keeps its own copy of
+`SetsToWin`, `PointsPerSet`, `WinBy` and `TiebreakPoints`, and a score is checked against that copy
+before it is accepted — so a set that could not have ended the way it was typed is refused, in the
+terms the group plays under rather than these. See
+[what counts as a plausible score]({{< relref "." >}}).
+
 Indoor volleyball differs on most of these — 25-point sets, five sets, a block that does not count
 as a touch either, a libero, rotation. `Format` distinguishes 2v2 through 6v6 and carries its own
 defaults, so a club that plays both is not forced to pick one.

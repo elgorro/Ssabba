@@ -155,7 +155,24 @@ the journal it can be rebuilt from. The calculation itself is pure and zero-sum 
 
 **Rating is applied once.** `RatingAppliedAt` is the idempotency marker, and the index
 `(CommunityId, Status, RatingAppliedAt)` is the queue a rating worker scans: confirmed matches
-whose ratings have not yet been applied.
+whose ratings have not yet been applied. It is cleared as well as set: `ApplyRatingAsync` and
+`ReverseRatingAsync` in `src/Ssabba.Web/Endpoints/MatchEndpoints.cs` are a pair, and a match that has
+had its rating taken back is a match the queue will pick up again. Correcting a score runs both, in
+one transaction, so the ladder ends where entering the right score first would have put it. Neither
+is exact once the same players have played again — Elo is path-dependent — so replaying a community's
+history is its own job, and these two are what it will be built on.
+
+**A deleted match is struck, not erased.** Deleting sets `DeletedAt` and `MatchStatus.Voided` and
+gives back the rating; the row and its history stay. A result that vanished could not explain a
+rating that had already moved, and the appearances are the journal the ladder is rebuilt from. Every
+read filters on `DeletedAt` rather than expecting the row to be gone.
+
+**A score is checked before it is stored.** `MatchScoring.Validate` in `Ssabba.Domain` refuses a set
+nobody won, a set stopped short of its target, a margin the rules do not allow, and a set played
+after the match was already decided — each against the match's own snapshot rather than against the
+current rule set. The same function runs in the entry form and behind the API, so a bad score is
+caught before it is posted and again if it arrives anyway. The rules themselves are written down once,
+in [Rules and scoring]({{< relref "../rules" >}}).
 
 **Teams are cheap, but a lineup is only ever one of them.** `IsAdHoc` marks the throwaway pairings
 formed for a single evening, as opposed to standing teams that enter tournaments. `TeamMember` is a

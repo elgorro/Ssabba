@@ -1,0 +1,110 @@
+@page "/matches/{Id:guid}/edit"
+@using Microsoft.AspNetCore.Authorization
+@using Ssabba.Shared
+@using Ssabba.Web.Client.Components
+@using System.Net.Http.Json
+@attribute [Authorize]
+@rendermode InteractiveAuto
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Edit match</PageTitle>
+
+<h1>Edit match</h1>
+
+@if (model is null || teams is null)
+{
+    <p><em>Loading…</em></p>
+}
+else
+{
+    <MatchForm Model="model" FormName="edit-match" Teams="teams" TeamsLocked="true" OnValidSubmit="Save">
+        <button type="submit" class="btn btn-primary btn-lg" disabled="@saving">Save</button>
+        <a class="btn btn-secondary" href="matches/@Id">Cancel</a>
+
+        <button type="button" class="btn btn-outline-danger float-end" disabled="@saving" @onclick="Delete">
+            Delete
+        </button>
+
+        <p class="text-body-secondary mt-3">
+            Correcting a score gives back the rating this match moved and applies it again from the
+            new one. Deleting it strikes it from the record and hands the rating back for good.
+        </p>
+
+        @if (error is not null)
+        {
+            <p class="text-danger">@error</p>
+        }
+    </MatchForm>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private MatchForm.MatchFormModel? model;
+    private List<TeamSummary>? teams;
+    private bool saving;
+    private string? error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        teams = await Http.GetFromJsonAsync<List<TeamSummary>>(ApiRoutes.Teams) ?? [];
+
+        if (await Http.GetFromJsonAsync<MatchDetail>($"{ApiRoutes.Matches}/{Id}") is { } match)
+        {
+            model = MatchForm.MatchFormModel.From(match);
+        }
+    }
+
+    private async Task Save()
+    {
+        if (model is null)
+        {
+            return;
+        }
+
+        saving = true;
+        error = null;
+
+        var response = await Http.PutAsJsonAsync(
+            $"{ApiRoutes.Matches}/{Id}",
+            new UpdateMatchRequest(
+                new DateTimeOffset(model.PlayedAt, TimeSpan.Zero),
+                null,
+                model.Location,
+                model.HomeTeamId,
+                model.AwayTeamId,
+                model.Scores()));
+
+        saving = false;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            error = await MatchForm.Explain(response);
+
+            return;
+        }
+
+        Navigation.NavigateTo($"matches/{Id}");
+    }
+
+    private async Task Delete()
+    {
+        saving = true;
+        error = null;
+
+        var response = await Http.DeleteAsync($"{ApiRoutes.Matches}/{Id}");
+
+        saving = false;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            error = await MatchForm.Explain(response);
+
+            return;
+        }
+
+        Navigation.NavigateTo("matches");
+    }
+}
