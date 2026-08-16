@@ -17,6 +17,13 @@ public class Team
     /// <summary>Thrown together for one match, rather than a pairing that plays on.</summary>
     public bool IsAdHoc { get; set; } = true;
 
+    /// <summary>
+    /// The members' ids, sorted and joined — see <see cref="TeamRoster.Key"/>. Unique within the
+    /// community, so the same lineup is only ever one row. Derived: rewrite it whenever the
+    /// membership changes, or the next lookup will miss this team and make a duplicate.
+    /// </summary>
+    public string MemberKey { get; set; } = "";
+
     public ICollection<TeamMember> Members { get; set; } = [];
 }
 

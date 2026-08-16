@@ -1,0 +1,134 @@
+@using System.ComponentModel.DataAnnotations
+@using Ssabba.Shared
+
+@* The fields shared by forming and editing a team. Saving stays with the page that owns it. *@
+<EditForm Model="Model" OnValidSubmit="OnValidSubmit" FormName="@FormName">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label" for="team-name">Name</label>
+        <InputText id="team-name" class="form-control" @bind-Value="Model.Name"
+                   placeholder="left empty, the players' names are used" />
+    </div>
+
+    <div class="form-check mb-3">
+        <InputCheckbox id="standing" class="form-check-input" @bind-Value="Model.IsStanding" />
+        <label class="form-check-label" for="standing">
+            A standing pairing, not thrown together for one match
+        </label>
+    </div>
+
+    <fieldset class="mb-3">
+        <legend class="form-label">Players</legend>
+
+        @if (Players.Count == 0)
+        {
+            <p class="text-body-secondary">There is nobody on the roster to pick from yet.</p>
+        }
+
+        @for (var index = 0; index < Model.Members.Count; index++)
+        {
+            var position = index;
+            var member = Model.Members[position];
+
+            <div class="row align-items-end mb-2">
+                <div class="col">
+                    <label class="form-label" for="@($"member-{position}")">Player @(position + 1)</label>
+                    <select id="@($"member-{position}")" class="form-select" value="@member.PlayerId"
+                            @onchange="e => member.PlayerId = Guid.TryParse((string?)e.Value, out var id) ? id : Guid.Empty">
+                        <option value="@Guid.Empty">—</option>
+                        @foreach (var player in Players)
+                        {
+                            <option value="@player.Id">@player.DisplayName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto mb-1">
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                            disabled="@(position == 0)" @onclick="() => Move(position, -1)">Up</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                            disabled="@(position == Model.Members.Count - 1)" @onclick="() => Move(position, 1)">Down</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm"
+                            disabled="@(Model.Members.Count <= 2)" @onclick="() => Model.Members.RemoveAt(position)">Remove</button>
+                </div>
+            </div>
+        }
+
+        <button type="button" class="btn btn-secondary btn-sm" @onclick="() => Model.Members.Add(new())">
+            Add a player
+        </button>
+    </fieldset>
+
+    @ChildContent
+</EditForm>
+
+@code {
+    [Parameter, EditorRequired]
+    public TeamFormModel Model { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public string FormName { get; set; } = "team";
+
+    /// <summary>The roster to pick from, loaded by the page.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<PlayerSummary> Players { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnValidSubmit { get; set; }
+
+    /// <summary>The buttons, which differ between forming and editing.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private void Move(int index, int offset)
+    {
+        var member = Model.Members[index];
+
+        Model.Members.RemoveAt(index);
+        Model.Members.Insert(index + offset, member);
+    }
+
+    /// <summary>Flattened for binding; the page turns it into the request record.</summary>
+    public sealed class TeamFormModel : IValidatableObject
+    {
+        [StringLength(120)]
+        public string? Name { get; set; }
+
+        /// <summary>The inverse of the entity's <c>IsAdHoc</c>: standing reads better on a form.</summary>
+        public bool IsStanding { get; set; }
+
+        /// <summary>Two empty slots to start with, because a beach volleyball team is a pair.</summary>
+        public List<MemberSlot> Members { get; set; } = [new(), new()];
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            var chosen = Members.Select(m => m.PlayerId).Where(id => id != Guid.Empty).ToList();
+
+            if (chosen.Count < 2)
+            {
+                yield return new ValidationResult("Pick at least two players.", [nameof(Members)]);
+            }
+
+            if (chosen.Count != chosen.Distinct().Count())
+            {
+                yield return new ValidationResult("A player cannot be in the team twice.", [nameof(Members)]);
+            }
+        }
+
+        public static TeamFormModel From(TeamDetail team) => new()
+        {
+            Name = team.Name,
+            IsStanding = !team.IsAdHoc,
+            Members = [.. team.Members.Select(m => new MemberSlot { PlayerId = m.PlayerId })],
+        };
+
+        /// <summary>The picked players, in the order shown, with the empty slots dropped.</summary>
+        public List<Guid> PlayerIds() => [.. Members.Select(m => m.PlayerId).Where(id => id != Guid.Empty).Distinct()];
+
+        public sealed class MemberSlot
+        {
+            public Guid PlayerId { get; set; }
+        }
+    }
+}

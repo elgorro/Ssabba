@@ -1,0 +1,79 @@
+@page "/teams"
+@using Microsoft.EntityFrameworkCore
+@using Ssabba.Infrastructure
+@using Ssabba.Shared
+@using Ssabba.Web.Endpoints
+@inject IDbContextFactory<SsabbaDbContext> DbFactory
+
+<PageTitle>Teams</PageTitle>
+
+<h1>Teams</h1>
+
+<p>
+    <a class="btn btn-primary" href="teams/new">Form a team</a>
+    @if (teams is not null)
+    {
+        <a class="btn btn-link" href="@(StandingOnly ? "teams" : "teams?standingOnly=true")">
+            @(StandingOnly ? "Show one-off lineups" : "Hide one-off lineups")
+        </a>
+    }
+</p>
+
+@if (noCommunity)
+{
+    <p>This instance has no community yet, so there are no teams to list.</p>
+}
+else if (teams is null)
+{
+    <p><em>Loading…</em></p>
+}
+else if (teams.Count == 0)
+{
+    <p>No teams yet.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Team</th>
+                <th>Players</th>
+                <th>Matches</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var team in teams)
+            {
+                <tr>
+                    <td>
+                        <a href="teams/@team.Id">@team.DisplayName</a>
+                        @if (team.IsAdHoc)
+                        {
+                            <span class="badge text-bg-secondary ms-2">One-off</span>
+                        }
+                    </td>
+                    <td>@string.Join(", ", team.MemberNames)</td>
+                    <td>@team.MatchesPlayed</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [SupplyParameterFromQuery]
+    public bool StandingOnly { get; set; }
+
+    private List<TeamSummary>? teams;
+    private bool noCommunity;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var communityId = await PlayerQueries.ResolveCommunityIdAsync(db);
+        noCommunity = communityId is null;
+
+        teams = noCommunity ? null : await TeamQueries.ListAsync(db, communityId!.Value, StandingOnly);
+    }
+}

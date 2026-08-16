@@ -41,7 +41,7 @@ else
                     <option value="">—</option>
                     @foreach (var team in teams)
                     {
-                        <option value="@team.Id">@team.Name</option>
+                        <option value="@team.Id">@team.DisplayName</option>
                     }
                 </InputSelect>
             </div>
@@ -51,7 +51,7 @@ else
                     <option value="">—</option>
                     @foreach (var team in teams)
                     {
-                        <option value="@team.Id">@team.Name</option>
+                        <option value="@team.Id">@team.DisplayName</option>
                     }
                 </InputSelect>
             </div>
@@ -85,13 +85,13 @@ else
 
 @code {
     private readonly MatchModel model = new();
-    private List<TeamOption>? teams;
+    private List<TeamSummary>? teams;
     private bool saving;
     private string? error;
 
     protected override async Task OnInitializedAsync()
     {
-        teams = await Http.GetFromJsonAsync<List<TeamOption>>(ApiRoutes.Teams) ?? [];
+        teams = await Http.GetFromJsonAsync<List<TeamSummary>>(ApiRoutes.Teams) ?? [];
     }
 
     private void AddSet() => model.Sets.Add(new SetModel { Number = model.Sets.Count + 1 });
