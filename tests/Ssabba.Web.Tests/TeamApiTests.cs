@@ -420,6 +420,11 @@ public class TeamApiTests(PostgresFixture postgres) : IAsyncLifetime
         return await IdOf(response);
     }
 
+    /// <summary>
+    /// Records the same set twice, so the match is a straight-sets win for whichever side these
+    /// points belong to. A one-set entry would be refused now: 2v2 is best of three, and an
+    /// unfinished match cannot be confirmed (#18).
+    /// </summary>
     private static async Task RecordMatchAsync(
         HttpClient client,
         Guid homeTeamId,
@@ -435,7 +440,7 @@ public class TeamApiTests(PostgresFixture postgres) : IAsyncLifetime
                 LocationNote: null,
                 homeTeamId,
                 awayTeamId,
-                [new SetScore(1, homePoints, awayPoints)]),
+                [new SetScore(1, homePoints, awayPoints), new SetScore(2, homePoints, awayPoints)]),
             TestContext.Current.CancellationToken);
 
         response.EnsureSuccessStatusCode();
