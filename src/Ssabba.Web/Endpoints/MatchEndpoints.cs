@@ -14,10 +14,29 @@ public static class MatchEndpoints
     {
         var group = endpoints.MapGroup(ApiRoutes.Matches).WithTags("Matches");
 
-        group.MapGet("/", async (IDbContextFactory<SsabbaDbContext> factory, CancellationToken ct) =>
+        group.MapGet("/", async (
+            IDbContextFactory<SsabbaDbContext> factory,
+            CancellationToken ct,
+            Guid? playerId = null,
+            Guid? teamId = null,
+            DateOnly? from = null,
+            DateOnly? to = null,
+            int page = 1,
+            int pageSize = 25) =>
         {
             await using var db = await factory.CreateDbContextAsync(ct);
-            return await MatchQueries.ListAsync(db, ct);
+
+            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            if (communityId is null)
+            {
+                return new PagedResult<MatchSummary>([], page, pageSize, 0);
+            }
+
+            return await MatchQueries.ListAsync(
+                db,
+                communityId.Value,
+                new MatchFilter(playerId, teamId, from, to, page, pageSize),
+                ct);
         });
 
         group.MapGet("/{id:guid}", async (
@@ -111,13 +130,58 @@ public static class MatchEndpoints
 /// </summary>
 public static class MatchQueries
 {
-    public static async Task<List<MatchSummary>> ListAsync(SsabbaDbContext db, CancellationToken ct = default)
+    /// <summary>Largest page a caller may ask for: a filter typo should not read the whole table.</summary>
+    private const int MaxPageSize = 100;
+
+    public static async Task<PagedResult<MatchSummary>> ListAsync(
+        SsabbaDbContext db,
+        Guid communityId,
+        MatchFilter filter,
+        CancellationToken ct = default)
     {
-        // Team names are composed in memory: string.Join over the members has no SQL translation.
-        var rows = await db.Matches
+        // Clamped here rather than at the edge, so the page and the API agree on what page 0 means.
+        var page = Math.Max(1, filter.Page);
+        var pageSize = Math.Clamp(filter.PageSize, 1, MaxPageSize);
+
+        var query = db.Matches
             .AsNoTracking()
-            .Where(m => m.DeletedAt == null)
+            .Where(m => m.CommunityId == communityId && m.DeletedAt == null);
+
+        if (filter.TeamId is { } teamId)
+        {
+            query = query.Where(m => m.HomeTeamId == teamId || m.AwayTeamId == teamId);
+        }
+
+        if (filter.PlayerId is { } playerId)
+        {
+            // The lineup, not the appearances: a match should list whether or not it has been rated.
+            query = query.Where(m =>
+                m.HomeTeam!.Members.Any(x => x.PlayerId == playerId) ||
+                m.AwayTeam!.Members.Any(x => x.PlayerId == playerId));
+        }
+
+        if (filter.From is { } from)
+        {
+            var start = new DateTimeOffset(from.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            query = query.Where(m => m.PlayedAt >= start);
+        }
+
+        if (filter.To is { } to)
+        {
+            // The whole of the closing day counts, hence the next midnight rather than that one.
+            var end = new DateTimeOffset(to.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            query = query.Where(m => m.PlayedAt < end);
+        }
+
+        var total = await query.CountAsync(ct);
+
+        // Team names are composed in memory: string.Join over the members has no SQL translation.
+        var rows = await query
             .OrderByDescending(m => m.PlayedAt)
+            // Two matches can share an instant; without a tiebreak the pages overlap.
+            .ThenBy(m => m.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(m => new
             {
                 m.Id,
@@ -133,7 +197,7 @@ public static class MatchQueries
             })
             .ToListAsync(ct);
 
-        return [.. rows.Select(r => new MatchSummary(
+        List<MatchSummary> items = [.. rows.Select(r => new MatchSummary(
             r.Id,
             r.PlayedAt,
             r.CourtName ?? r.LocationNote,
@@ -141,6 +205,8 @@ public static class MatchQueries
             TeamNaming.Describe(r.AwayName, r.AwayMembers),
             r.HomeSetsWon,
             r.AwaySetsWon))];
+
+        return new PagedResult<MatchSummary>(items, page, pageSize, total);
     }
 
     /// <summary>One match with its sets, or <c>null</c> when the community has no such match.</summary>

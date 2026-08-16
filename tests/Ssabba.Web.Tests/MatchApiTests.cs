@@ -263,10 +263,9 @@ public class MatchApiTests(PostgresFixture postgres) : IAsyncLifetime
         Assert.Equal(untouched, await RatingsAsync());
 
         // Struck from the record, not erased: the row stays, filtered out of every read.
-        var listed = await client.GetFromJsonAsync<List<MatchSummary>>(
-            ApiRoutes.Matches, TestContext.Current.CancellationToken) ?? [];
+        var listed = await ListAsync(client);
 
-        Assert.DoesNotContain(listed, m => m.Id == id);
+        Assert.DoesNotContain(listed.Items, m => m.Id == id);
 
         var detail = await client.GetAsync($"{ApiRoutes.Matches}/{id}", TestContext.Current.CancellationToken);
 
@@ -345,6 +344,163 @@ public class MatchApiTests(PostgresFixture postgres) : IAsyncLifetime
         Assert.Contains("18", html, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Filtering_by_team_leaves_out_the_matches_it_did_not_play()
+    {
+        await SeedAsync();
+
+        using var client = factory.CreateClientAs("ada");
+
+        var (home, away) = await TwoTeamsAsync(client);
+        var third = await TeamAsync(client, "Katherine Johnson", "Dorothy Vaughan");
+
+        var ours = await RecordAsync(client, home, away, (21, 18), (21, 15));
+        var theirs = await RecordAsync(client, third, away, (21, 18), (21, 15));
+
+        var listed = await ListAsync(client, $"?teamId={home}");
+
+        Assert.Equal(1, listed.TotalCount);
+        Assert.Equal(ours, Assert.Single(listed.Items).Id);
+        Assert.DoesNotContain(listed.Items, m => m.Id == theirs);
+    }
+
+    [Fact]
+    public async Task Filtering_by_player_finds_them_on_either_side()
+    {
+        await SeedAsync();
+
+        using var client = factory.CreateClientAs("ada");
+
+        var (home, away) = await TwoTeamsAsync(client);
+        var third = await TeamAsync(client, "Katherine Johnson", "Dorothy Vaughan");
+
+        // Ada plays at home in one match, and the away team in the other is hers too.
+        var first = await RecordAsync(client, home, away, (21, 18), (21, 15));
+        var second = await RecordAsync(client, third, home, (21, 18), (21, 15));
+        var without = await RecordAsync(client, third, away, (21, 18), (21, 15));
+
+        var ada = await PlayerIdAsync(client, "Ada Lovelace");
+
+        var listed = await ListAsync(client, $"?playerId={ada}");
+
+        Assert.Equal(2, listed.TotalCount);
+        Assert.Contains(listed.Items, m => m.Id == first);
+        Assert.Contains(listed.Items, m => m.Id == second);
+        Assert.DoesNotContain(listed.Items, m => m.Id == without);
+    }
+
+    [Fact]
+    public async Task A_date_range_takes_in_both_of_its_end_days_and_nothing_outside_them()
+    {
+        await SeedAsync();
+
+        using var client = factory.CreateClientAs("ada");
+
+        var (home, away) = await TwoTeamsAsync(client);
+
+        var before = await RecordAtAsync(
+            client, new DateTimeOffset(2026, 5, 31, 20, 0, 0, TimeSpan.Zero), home, away, (21, 18), (21, 15));
+        var onFrom = await RecordAtAsync(
+            client, new DateTimeOffset(2026, 6, 1, 0, 30, 0, TimeSpan.Zero), home, away, (21, 18), (21, 15));
+        var onTo = await RecordAtAsync(
+            client, new DateTimeOffset(2026, 6, 2, 23, 30, 0, TimeSpan.Zero), home, away, (21, 18), (21, 15));
+        var after = await RecordAtAsync(
+            client, new DateTimeOffset(2026, 6, 3, 1, 0, 0, TimeSpan.Zero), home, away, (21, 18), (21, 15));
+
+        var listed = await ListAsync(client, "?from=2026-06-01&to=2026-06-02");
+
+        Assert.Equal(2, listed.TotalCount);
+        Assert.Contains(listed.Items, m => m.Id == onFrom);
+        Assert.Contains(listed.Items, m => m.Id == onTo);
+        Assert.DoesNotContain(listed.Items, m => m.Id == before || m.Id == after);
+    }
+
+    [Fact]
+    public async Task Paging_hands_back_one_page_at_a_time_and_says_how_many_there_are()
+    {
+        await SeedAsync();
+
+        using var client = factory.CreateClientAs("ada");
+
+        var (home, away) = await TwoTeamsAsync(client);
+
+        var older = await RecordAtAsync(
+            client, new DateTimeOffset(2026, 6, 1, 18, 0, 0, TimeSpan.Zero), home, away, (21, 18), (21, 15));
+        var newer = await RecordAtAsync(
+            client, new DateTimeOffset(2026, 6, 8, 18, 0, 0, TimeSpan.Zero), home, away, (21, 18), (21, 15));
+
+        var first = await ListAsync(client, "?pageSize=1");
+
+        Assert.Equal(2, first.TotalCount);
+        Assert.Equal(2, first.PageCount);
+        Assert.Equal(1, first.Page);
+        Assert.Equal(newer, Assert.Single(first.Items).Id);
+
+        var second = await ListAsync(client, "?pageSize=1&page=2");
+
+        Assert.Equal(2, second.Page);
+        Assert.Equal(older, Assert.Single(second.Items).Id);
+    }
+
+    [Fact]
+    public async Task The_match_list_page_shows_only_the_team_it_was_filtered_to()
+    {
+        await SeedAsync();
+
+        using var client = factory.CreateClientAs("ada");
+
+        var (home, away) = await TwoTeamsAsync(client);
+        var third = await TeamAsync(client, "Katherine Johnson", "Dorothy Vaughan");
+
+        var ours = await RecordAsync(client, home, away, (21, 18), (21, 15));
+        var theirs = await RecordAsync(client, third, away, (21, 18), (21, 15));
+
+        using var anonymous = factory.CreateClient();
+
+        var html = await anonymous.GetStringAsync(
+            $"/matches?teamId={home}", TestContext.Current.CancellationToken);
+
+        // The rows are the links to each match; every team's name is in the filter dropdown regardless.
+        Assert.Contains($"matches/{ours}", html, StringComparison.Ordinal);
+        Assert.DoesNotContain($"matches/{theirs}", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_unfilled_filter_form_lists_everything_rather_than_failing()
+    {
+        await SeedAsync();
+
+        using var client = factory.CreateClientAs("ada");
+
+        var (home, away) = await TwoTeamsAsync(client);
+        var id = await RecordAsync(client, home, away, (21, 18), (21, 15));
+
+        using var anonymous = factory.CreateClient();
+
+        // What the browser sends when every control of the GET form is left on its blank option.
+        var response = await anonymous.GetAsync(
+            "/matches?playerId=&teamId=&from=&to=", TestContext.Current.CancellationToken);
+
+        response.EnsureSuccessStatusCode();
+
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        Assert.Contains($"matches/{id}", html, StringComparison.Ordinal);
+    }
+
+    private static async Task<Guid> PlayerIdAsync(HttpClient client, string displayName)
+    {
+        var players = await client.GetFromJsonAsync<List<PlayerSummary>>(
+            ApiRoutes.Players, TestContext.Current.CancellationToken) ?? [];
+
+        return players.Single(p => p.DisplayName == displayName).Id;
+    }
+
+    private static async Task<PagedResult<MatchSummary>> ListAsync(HttpClient client, string query = "") =>
+        await client.GetFromJsonAsync<PagedResult<MatchSummary>>(
+            ApiRoutes.Matches + query, TestContext.Current.CancellationToken)
+        ?? new PagedResult<MatchSummary>([], 1, 0, 0);
+
     private static CreateMatchRequest Request(
         Guid homeTeamId,
         Guid awayTeamId,
@@ -356,14 +512,25 @@ public class MatchApiTests(PostgresFixture postgres) : IAsyncLifetime
             awayTeamId,
             [.. sets.Select((s, i) => new SetScore(i + 1, s.Home, s.Away))]);
 
-    private static async Task<Guid> RecordAsync(
+    private static Task<Guid> RecordAsync(
         HttpClient client,
+        Guid homeTeamId,
+        Guid awayTeamId,
+        params (int Home, int Away)[] sets) =>
+        RecordAtAsync(client, DateTimeOffset.UtcNow, homeTeamId, awayTeamId, sets);
+
+    /// <summary>Records a match on a given day, which is what the date filter has to sort out.</summary>
+    private static async Task<Guid> RecordAtAsync(
+        HttpClient client,
+        DateTimeOffset playedAt,
         Guid homeTeamId,
         Guid awayTeamId,
         params (int Home, int Away)[] sets)
     {
+        var request = Request(homeTeamId, awayTeamId, sets) with { PlayedAt = playedAt };
+
         var response = await client.PostAsJsonAsync(
-            ApiRoutes.Matches, Request(homeTeamId, awayTeamId, sets), TestContext.Current.CancellationToken);
+            ApiRoutes.Matches, request, TestContext.Current.CancellationToken);
 
         response.EnsureSuccessStatusCode();
 
