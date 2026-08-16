@@ -1,0 +1,74 @@
+@page "/teams/new"
+@using Microsoft.AspNetCore.Authorization
+@using Ssabba.Shared
+@using Ssabba.Web.Client.Components
+@using System.Net.Http.Json
+@attribute [Authorize]
+@rendermode InteractiveAuto
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Form a team</PageTitle>
+
+<h1>Form a team</h1>
+
+<p class="text-body-secondary">
+    A lineup that has played before is picked up again rather than made twice, so entering the same
+    players takes you to the team they already are.
+</p>
+
+@if (players is null)
+{
+    <p><em>Loading the roster…</em></p>
+}
+else
+{
+    <TeamForm Model="model" FormName="new-team" Players="players" OnValidSubmit="Save">
+        <button type="submit" class="btn btn-primary" disabled="@saving">Form team</button>
+        <a class="btn btn-secondary" href="teams">Cancel</a>
+
+        @if (error is not null)
+        {
+            <p class="text-danger mt-3">@error</p>
+        }
+    </TeamForm>
+}
+
+@code {
+    private readonly TeamForm.TeamFormModel model = new();
+    private List<PlayerSummary>? players;
+    private bool saving;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        players = await Http.GetFromJsonAsync<List<PlayerSummary>>(ApiRoutes.Players) ?? [];
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        error = null;
+
+        var response = await Http.PostAsJsonAsync(
+            ApiRoutes.Teams,
+            new CreateTeamRequest(model.Name, !model.IsStanding, model.PlayerIds()));
+
+        saving = false;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            error = await response.Content.ReadAsStringAsync() is { Length: > 0 } message
+                ? message
+                : $"Saving failed ({(int)response.StatusCode}).";
+
+            return;
+        }
+
+        // 201 means the team is new; 200 means these players were already a team, and the id that
+        // comes back is theirs.
+        var id = await response.Content.ReadFromJsonAsync<Guid>();
+
+        Navigation.NavigateTo($"teams/{id}");
+    }
+}

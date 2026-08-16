@@ -1,0 +1,111 @@
+@page "/teams/{Id:guid}/edit"
+@using Microsoft.AspNetCore.Authorization
+@using Ssabba.Shared
+@using Ssabba.Web.Client.Components
+@using System.Net.Http.Json
+@attribute [Authorize]
+@rendermode InteractiveAuto
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Edit team</PageTitle>
+
+<h1>Edit team</h1>
+
+@if (model is null || players is null)
+{
+    <p><em>Loading…</em></p>
+}
+else
+{
+    <TeamForm Model="model" FormName="edit-team" Players="players" OnValidSubmit="Save">
+        <button type="submit" class="btn btn-primary" disabled="@saving">Save</button>
+        <a class="btn btn-secondary" href="teams/@Id">Cancel</a>
+
+        <button type="button" class="btn btn-outline-danger float-end" disabled="@saving" @onclick="Delete">
+            Delete
+        </button>
+
+        <p class="text-body-secondary mt-3">
+            A team that has played cannot be deleted: its matches point at it, and the results would
+            go with it. Changing the players re-keys the team, so a lineup that is already another
+            team's is refused rather than merged.
+        </p>
+
+        @if (error is not null)
+        {
+            <p class="text-danger">@error</p>
+        }
+    </TeamForm>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private TeamForm.TeamFormModel? model;
+    private List<PlayerSummary>? players;
+    private bool saving;
+    private string? error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        players = await Http.GetFromJsonAsync<List<PlayerSummary>>(ApiRoutes.Players) ?? [];
+
+        var team = await Http.GetFromJsonAsync<TeamDetail>($"{ApiRoutes.Teams}/{Id}");
+
+        if (team is not null)
+        {
+            model = TeamForm.TeamFormModel.From(team);
+        }
+    }
+
+    private async Task Save()
+    {
+        if (model is null)
+        {
+            return;
+        }
+
+        saving = true;
+        error = null;
+
+        var response = await Http.PutAsJsonAsync(
+            $"{ApiRoutes.Teams}/{Id}",
+            new UpdateTeamRequest(model.Name, !model.IsStanding, model.PlayerIds()));
+
+        saving = false;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            error = await Explain(response);
+            return;
+        }
+
+        Navigation.NavigateTo($"teams/{Id}");
+    }
+
+    private async Task Delete()
+    {
+        saving = true;
+        error = null;
+
+        var response = await Http.DeleteAsync($"{ApiRoutes.Teams}/{Id}");
+
+        saving = false;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            error = await Explain(response);
+            return;
+        }
+
+        Navigation.NavigateTo("teams");
+    }
+
+    /// <summary>The API answers a bad request with the reason in plain words; show it as it is.</summary>
+    private static async Task<string> Explain(HttpResponseMessage response) =>
+        await response.Content.ReadAsStringAsync() is { Length: > 0 } message
+            ? message
+            : $"That failed ({(int)response.StatusCode}).";
+}

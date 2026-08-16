@@ -31,12 +31,6 @@ public static class MatchEndpoints
             return Results.Created($"{ApiRoutes.Matches}/{id}", id);
         }).RequireAuthorization();
 
-        endpoints.MapGet(ApiRoutes.Teams, async (IDbContextFactory<SsabbaDbContext> factory, CancellationToken ct) =>
-        {
-            await using var db = await factory.CreateDbContextAsync(ct);
-            return await MatchQueries.ListTeamsAsync(db, ct);
-        }).WithTags("Teams");
-
         return endpoints;
     }
 }
@@ -75,22 +69,6 @@ public static class MatchQueries
             TeamNaming.Describe(r.AwayName, r.AwayMembers),
             r.HomeSetsWon,
             r.AwaySetsWon))];
-    }
-
-    public static async Task<List<TeamOption>> ListTeamsAsync(SsabbaDbContext db, CancellationToken ct = default)
-    {
-        var rows = await db.Teams
-            .AsNoTracking()
-            .OrderBy(t => t.Name)
-            .Select(t => new
-            {
-                t.Id,
-                t.Name,
-                Members = t.Members.Select(m => m.Player!.DisplayName).ToList(),
-            })
-            .ToListAsync(ct);
-
-        return [.. rows.Select(r => new TeamOption(r.Id, TeamNaming.Describe(r.Name, r.Members)))];
     }
 
     /// <summary>

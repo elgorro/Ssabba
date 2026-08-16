@@ -22,5 +22,3 @@ public record CreateMatchRequest(
     IReadOnlyList<SetScore> Sets);
 
 public record SetScore(int Number, int HomePoints, int AwayPoints);
-
-public record TeamOption(Guid Id, string Name);

@@ -1,0 +1,109 @@
+@page "/teams/{Id:guid}"
+@using Microsoft.EntityFrameworkCore
+@using Ssabba.Infrastructure
+@using Ssabba.Shared
+@using Ssabba.Web.Endpoints
+@inject IDbContextFactory<SsabbaDbContext> DbFactory
+@inject NavigationManager Navigation
+
+<PageTitle>@(team?.DisplayName ?? "Team")</PageTitle>
+
+@if (team is null)
+{
+    <p><em>Loading…</em></p>
+}
+else
+{
+    <h1>
+        @team.DisplayName
+        @if (team.IsAdHoc)
+        {
+            <span class="badge text-bg-secondary align-middle ms-2">One-off</span>
+        }
+    </h1>
+
+    <p>
+        <a class="btn btn-secondary" href="teams/@team.Id/edit">Edit</a>
+    </p>
+
+    <dl class="row">
+        <dt class="col-sm-3">Players</dt>
+        <dd class="col-sm-9">
+            @foreach (var member in team.Members)
+            {
+                <a href="players/@member.Slug">@member.DisplayName</a>
+                @if (member.Position != "None")
+                {
+                    <span class="text-body-secondary">&nbsp;(@member.Position)</span>
+                }
+                @if (member != team.Members[^1])
+                {
+                    <span>,&nbsp;</span>
+                }
+            }
+        </dd>
+
+        <dt class="col-sm-3">Record</dt>
+        <dd class="col-sm-9">@team.Wins–@team.Losses <span class="text-body-secondary">(won–lost)</span></dd>
+
+        <dt class="col-sm-3">Matches played</dt>
+        <dd class="col-sm-9">@team.MatchesPlayed</dd>
+    </dl>
+
+    <h2>Matches</h2>
+
+    @if (matches is null || matches.Count == 0)
+    {
+        <p>This team has not played yet.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Played</th>
+                    <th>Opponent</th>
+                    <th>Result</th>
+                    <th>Sets</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var match in matches)
+                {
+                    <tr>
+                        <td>@match.PlayedAt.ToLocalTime().ToString("yyyy-MM-dd")</td>
+                        <td>@match.Opponent</td>
+                        <td>@(match.SetsFor > match.SetsAgainst ? "Won" : match.SetsFor == match.SetsAgainst ? "Undecided" : "Lost")</td>
+                        <td>@match.SetsFor–@match.SetsAgainst</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private TeamDetail? team;
+    private List<TeamMatchRow>? matches;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var communityId = await PlayerQueries.ResolveCommunityIdAsync(db);
+
+        team = communityId is null ? null : await TeamQueries.GetAsync(db, communityId.Value, Id);
+
+        if (team is null)
+        {
+            Navigation.NavigateTo("not-found");
+
+            return;
+        }
+
+        matches = await TeamQueries.ListMatchesAsync(db, communityId!.Value, Id);
+    }
+}
