@@ -1,0 +1,105 @@
+@page "/matches/{Id:guid}"
+@using Microsoft.EntityFrameworkCore
+@using Ssabba.Infrastructure
+@using Ssabba.Shared
+@using Ssabba.Web.Endpoints
+@inject IDbContextFactory<SsabbaDbContext> DbFactory
+@inject NavigationManager Navigation
+
+<PageTitle>@(match is null ? "Match" : $"{match.HomeTeam} v {match.AwayTeam}")</PageTitle>
+
+@if (match is null)
+{
+    <p><em>Loading…</em></p>
+}
+else
+{
+    <h1>@match.HomeTeam <span class="text-body-secondary">v</span> @match.AwayTeam</h1>
+
+    <p class="fs-4">
+        @match.HomeSetsWon&ndash;@match.AwaySetsWon
+        <span class="text-body-secondary ms-2">@Verdict(match)</span>
+    </p>
+
+    <p>
+        <a class="btn btn-secondary" href="matches/@match.Id/edit">Edit</a>
+        <a class="btn btn-link" href="matches">All matches</a>
+    </p>
+
+    <dl class="row">
+        <dt class="col-sm-3">Played</dt>
+        <dd class="col-sm-9">@match.PlayedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</dd>
+
+        @if (!string.IsNullOrWhiteSpace(match.Location))
+        {
+            <dt class="col-sm-3">Where</dt>
+            <dd class="col-sm-9">@match.Location</dd>
+        }
+
+        <dt class="col-sm-3">Played under</dt>
+        <dd class="col-sm-9">
+            Best of @(2 * match.SetsToWin - 1), to @match.PointsPerSet
+            @if (match.WinBy > 1)
+            {
+                <text>, by @match.WinBy</text>
+            }
+            @if (match.TiebreakPoints > 0)
+            {
+                <text>, deciding set to @match.TiebreakPoints</text>
+            }
+        </dd>
+    </dl>
+
+    <h2>Sets</h2>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Set</th>
+                    <th>@match.HomeTeam</th>
+                    <th>@match.AwayTeam</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var set in match.Sets)
+                {
+                    <tr>
+                        <td>@set.Number</td>
+                        <td class="@(set.HomePoints > set.AwayPoints ? "fw-bold" : null)">@set.HomePoints</td>
+                        <td class="@(set.AwayPoints > set.HomePoints ? "fw-bold" : null)">@set.AwayPoints</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private MatchDetail? match;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var communityId = await PlayerQueries.ResolveCommunityIdAsync(db);
+
+        match = communityId is null ? null : await MatchQueries.GetAsync(db, communityId.Value, Id);
+
+        if (match is null)
+        {
+            Navigation.NavigateTo("not-found");
+        }
+    }
+
+    /// <summary>The winner is read off the sets, never stored, so it is stated rather than looked up.</summary>
+    private static string Verdict(MatchDetail match) => match.Outcome switch
+    {
+        "HomeWin" => $"{match.HomeTeam} won",
+        "AwayWin" => $"{match.AwayTeam} won",
+        _ => "Undecided",
+    };
+}

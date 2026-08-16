@@ -1,6 +1,7 @@
 @page "/matches/new"
 @using Microsoft.AspNetCore.Authorization
 @using Ssabba.Shared
+@using Ssabba.Web.Client.Components
 @using System.Net.Http.Json
 @attribute [Authorize]
 @rendermode InteractiveAuto
@@ -17,74 +18,26 @@
 }
 else if (teams.Count < 2)
 {
-    <p>At least two teams are needed before a match can be recorded.</p>
+    <p>
+        At least two teams are needed before a match can be recorded.
+        <a href="teams/new">Form one</a>.
+    </p>
 }
 else
 {
-    <EditForm Model="model" OnValidSubmit="Save" FormName="new-match">
-        <DataAnnotationsValidator />
-
-        <div class="mb-3">
-            <label class="form-label" for="played-at">Played at</label>
-            <InputDate id="played-at" class="form-control" Type="InputDateType.DateTimeLocal" @bind-Value="model.PlayedAt" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label" for="location">Location</label>
-            <InputText id="location" class="form-control" @bind-Value="model.Location" />
-        </div>
-
-        <div class="row">
-            <div class="col mb-3">
-                <label class="form-label" for="home-team">Home team</label>
-                <InputSelect id="home-team" class="form-select" @bind-Value="model.HomeTeamId">
-                    <option value="">—</option>
-                    @foreach (var team in teams)
-                    {
-                        <option value="@team.Id">@team.DisplayName</option>
-                    }
-                </InputSelect>
-            </div>
-            <div class="col mb-3">
-                <label class="form-label" for="away-team">Away team</label>
-                <InputSelect id="away-team" class="form-select" @bind-Value="model.AwayTeamId">
-                    <option value="">—</option>
-                    @foreach (var team in teams)
-                    {
-                        <option value="@team.Id">@team.DisplayName</option>
-                    }
-                </InputSelect>
-            </div>
-        </div>
-
-        @for (var i = 0; i < model.Sets.Count; i++)
-        {
-            var set = model.Sets[i];
-            <div class="row align-items-end">
-                <div class="col-2"><strong>Set @set.Number</strong></div>
-                <div class="col mb-3">
-                    <label class="form-label" for="@($"home-{set.Number}")">Home points</label>
-                    <InputNumber id="@($"home-{set.Number}")" class="form-control" @bind-Value="set.HomePoints" />
-                </div>
-                <div class="col mb-3">
-                    <label class="form-label" for="@($"away-{set.Number}")">Away points</label>
-                    <InputNumber id="@($"away-{set.Number}")" class="form-control" @bind-Value="set.AwayPoints" />
-                </div>
-            </div>
-        }
-
-        <button type="button" class="btn btn-secondary" @onclick="AddSet">Add set</button>
-        <button type="submit" class="btn btn-primary" disabled="@saving">Save match</button>
+    <MatchForm Model="model" FormName="new-match" Teams="teams" OnValidSubmit="Save">
+        <button type="submit" class="btn btn-primary btn-lg" disabled="@saving">Save match</button>
+        <a class="btn btn-secondary" href="matches">Cancel</a>
 
         @if (error is not null)
         {
             <p class="text-danger mt-3">@error</p>
         }
-    </EditForm>
+    </MatchForm>
 }
 
 @code {
-    private readonly MatchModel model = new();
+    private readonly MatchForm.MatchFormModel model = new();
     private List<TeamSummary>? teams;
     private bool saving;
     private string? error;
@@ -94,16 +47,8 @@ else
         teams = await Http.GetFromJsonAsync<List<TeamSummary>>(ApiRoutes.Teams) ?? [];
     }
 
-    private void AddSet() => model.Sets.Add(new SetModel { Number = model.Sets.Count + 1 });
-
     private async Task Save()
     {
-        if (model.HomeTeamId == model.AwayTeamId)
-        {
-            error = "A team cannot play against itself.";
-            return;
-        }
-
         saving = true;
         error = null;
 
@@ -114,7 +59,7 @@ else
             model.Location,
             model.HomeTeamId,
             model.AwayTeamId,
-            [.. model.Sets.Select(s => new SetScore(s.Number, s.HomePoints, s.AwayPoints))]);
+            model.Scores());
 
         var response = await Http.PostAsJsonAsync(ApiRoutes.Matches, request);
 
@@ -122,26 +67,11 @@ else
 
         if (!response.IsSuccessStatusCode)
         {
-            error = $"Saving failed ({(int)response.StatusCode}).";
+            error = await MatchForm.Explain(response);
+
             return;
         }
 
         Navigation.NavigateTo("matches");
-    }
-
-    private sealed class MatchModel
-    {
-        public DateTime PlayedAt { get; set; } = DateTime.UtcNow;
-        public string? Location { get; set; }
-        public Guid HomeTeamId { get; set; }
-        public Guid AwayTeamId { get; set; }
-        public List<SetModel> Sets { get; set; } = [new SetModel { Number = 1 }];
-    }
-
-    private sealed class SetModel
-    {
-        public int Number { get; set; }
-        public int HomePoints { get; set; }
-        public int AwayPoints { get; set; }
     }
 }

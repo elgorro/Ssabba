@@ -1,0 +1,276 @@
+@using System.ComponentModel.DataAnnotations
+@using Ssabba.Domain
+@using Ssabba.Shared
+
+@* The fields shared by recording and correcting a match. Saving stays with the page that owns it. *@
+<EditForm Model="Model" OnValidSubmit="OnValidSubmit" FormName="@FormName">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label" for="played-at">Played at</label>
+        <InputDate id="played-at" class="form-control" Type="InputDateType.DateTimeLocal" @bind-Value="Model.PlayedAt" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="location">Location</label>
+        <InputText id="location" class="form-control" @bind-Value="Model.Location"
+                   placeholder="the beach, court 2, …" />
+    </div>
+
+    <div class="row">
+        <div class="col-12 col-md-6 mb-3">
+            <label class="form-label" for="home-team">Home team</label>
+            <InputSelect id="home-team" class="form-select" @bind-Value="Model.HomeTeamId" disabled="@TeamsLocked">
+                <option value="">—</option>
+                @foreach (var team in Teams)
+                {
+                    <option value="@team.Id">@team.DisplayName</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="col-12 col-md-6 mb-3">
+            <label class="form-label" for="away-team">Away team</label>
+            <InputSelect id="away-team" class="form-select" @bind-Value="Model.AwayTeamId" disabled="@TeamsLocked">
+                <option value="">—</option>
+                @foreach (var team in Teams)
+                {
+                    <option value="@team.Id">@team.DisplayName</option>
+                }
+            </InputSelect>
+        </div>
+    </div>
+
+    @if (TeamsLocked)
+    {
+        <p class="text-body-secondary">
+            Who played is not editable: a different pairing is a different match, and two other
+            people's ratings would have to move with it.
+        </p>
+    }
+
+    <fieldset class="mb-3">
+        <legend class="form-label">Sets</legend>
+
+        @for (var index = 0; index < Model.Sets.Count; index++)
+        {
+            var position = index;
+            var set = Model.Sets[position];
+
+            <div class="row align-items-end mb-2">
+                <div class="col-2 col-sm-1 pb-2"><strong>@set.Number</strong></div>
+                <div class="col">
+                    <label class="visually-hidden" for="@($"home-{set.Number}")">Home points, set @set.Number</label>
+                    @* inputmode opens the phone's number pad; lg gives it a thumb-sized target. *@
+                    <input id="@($"home-{set.Number}")" class="form-control form-control-lg text-center"
+                           type="number" inputmode="numeric" min="0" value="@set.HomePoints"
+                           @onchange="e => Score(set, home: true, e.Value)" />
+                </div>
+                <div class="col-auto pb-2 text-body-secondary">:</div>
+                <div class="col">
+                    <label class="visually-hidden" for="@($"away-{set.Number}")">Away points, set @set.Number</label>
+                    <input id="@($"away-{set.Number}")" class="form-control form-control-lg text-center"
+                           type="number" inputmode="numeric" min="0" value="@set.AwayPoints"
+                           @onchange="e => Score(set, home: false, e.Value)" />
+                </div>
+                <div class="col-auto pb-2">
+                    <button type="button" class="btn btn-outline-danger btn-sm"
+                            disabled="@(Model.Sets.Count <= 1)" @onclick="() => Remove(position)">
+                        &times;
+                    </button>
+                </div>
+            </div>
+        }
+
+        @if (Model.Sets.Count < Model.MaxSets)
+        {
+            <button type="button" class="btn btn-secondary btn-sm" @onclick="AddSet">Add a set</button>
+        }
+    </fieldset>
+
+    <p class="fs-5">
+        @Model.HomeSetsWon&ndash;@Model.AwaySetsWon
+        <span class="text-body-secondary ms-2">@Standing()</span>
+    </p>
+
+    @ChildContent
+</EditForm>
+
+@code {
+    [Parameter, EditorRequired]
+    public MatchFormModel Model { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public string FormName { get; set; } = "match";
+
+    /// <summary>The lineups to pick from, loaded by the page.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TeamSummary> Teams { get; set; } = [];
+
+    /// <summary>Set when correcting a match, where the sides are already settled.</summary>
+    [Parameter]
+    public bool TeamsLocked { get; set; }
+
+    [Parameter]
+    public EventCallback OnValidSubmit { get; set; }
+
+    /// <summary>The buttons, which differ between recording and correcting.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// The API answers a bad request with the reason in plain words — an impossible score says which
+    /// set and why — so show it as it is rather than a status code.
+    /// </summary>
+    public static async Task<string> Explain(HttpResponseMessage response)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+
+        return await response.Content.ReadAsStringAsync() is { Length: > 0 } message
+            ? message
+            : $"That failed ({(int)response.StatusCode}).";
+    }
+
+    private void AddSet() => Model.Sets.Add(new SetSlot { Number = Model.Sets.Count + 1 });
+
+    private void Remove(int index)
+    {
+        Model.Sets.RemoveAt(index);
+
+        // The numbers are positions, not names, so they close up behind a removed set.
+        for (var i = 0; i < Model.Sets.Count; i++)
+        {
+            Model.Sets[i].Number = i + 1;
+        }
+    }
+
+    /// <summary>
+    /// Takes a typed score and, once a set has a winner, offers the next one without being asked —
+    /// the whole point at the net is not having to reach for a button between sets.
+    /// </summary>
+    private void Score(SetSlot set, bool home, object? value)
+    {
+        var points = int.TryParse(value as string, out var parsed) ? parsed : 0;
+
+        if (home)
+        {
+            set.HomePoints = points;
+        }
+        else
+        {
+            set.AwayPoints = points;
+        }
+
+        var decided = Model.HomeSetsWon >= Model.SetsToWin || Model.AwaySetsWon >= Model.SetsToWin;
+
+        if (!decided && set.HomePoints != set.AwayPoints && set == Model.Sets[^1] && Model.Sets.Count < Model.MaxSets)
+        {
+            AddSet();
+        }
+    }
+
+    private string Standing() => Model.HomeSetsWon.CompareTo(Model.AwaySetsWon) switch
+    {
+        _ when Model.HomeTeamId == Guid.Empty || Model.AwayTeamId == Guid.Empty => "Pick both teams",
+        > 0 => $"{Name(Model.HomeTeamId)} leads",
+        < 0 => $"{Name(Model.AwayTeamId)} leads",
+        _ => "Level",
+    };
+
+    private string Name(Guid teamId) =>
+        Teams.FirstOrDefault(t => t.Id == teamId)?.DisplayName ?? "That team";
+
+    /// <summary>Flattened for binding; the page turns it into the request record.</summary>
+    public sealed class MatchFormModel : IValidatableObject
+    {
+        public DateTime PlayedAt { get; set; } = DateTime.Now;
+
+        [StringLength(200)]
+        public string? Location { get; set; }
+
+        public Guid HomeTeamId { get; set; }
+
+        public Guid AwayTeamId { get; set; }
+
+        public List<SetSlot> Sets { get; set; } = [new SetSlot { Number = 1 }];
+
+        /// <summary>
+        /// The scoring the match is played under. Defaulted to the beach game until a recorded match
+        /// says otherwise, so the form checks the same rules the server will and a bad score is
+        /// caught before it is posted rather than after.
+        /// </summary>
+        public int SetsToWin { get; set; } = 2;
+
+        public int PointsPerSet { get; set; } = 21;
+
+        public int WinBy { get; set; } = 2;
+
+        public int TiebreakPoints { get; set; } = 15;
+
+        public int MaxSets => (2 * SetsToWin) - 1;
+
+        public int HomeSetsWon => Sets.Count(s => s.HomePoints > s.AwayPoints);
+
+        public int AwaySetsWon => Sets.Count(s => s.AwayPoints > s.HomePoints);
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (HomeTeamId == Guid.Empty || AwayTeamId == Guid.Empty)
+            {
+                yield return new ValidationResult("Pick both teams.", [nameof(HomeTeamId)]);
+            }
+            else if (HomeTeamId == AwayTeamId)
+            {
+                yield return new ValidationResult("A team cannot play against itself.", [nameof(AwayTeamId)]);
+            }
+
+            var scores = ScoresForValidation();
+
+            if (MatchScoring.Validate(scores, SetsToWin, PointsPerSet, WinBy, TiebreakPoints) is { } complaint)
+            {
+                yield return new ValidationResult(complaint, [nameof(Sets)]);
+            }
+            else if (!MatchScoring.IsDecided(scores, SetsToWin))
+            {
+                yield return new ValidationResult(
+                    $"Nobody has won {SetsToWin} set{(SetsToWin == 1 ? string.Empty : "s")} yet.",
+                    [nameof(Sets)]);
+            }
+        }
+
+        public static MatchFormModel From(MatchDetail match) => new()
+        {
+            PlayedAt = match.PlayedAt.LocalDateTime,
+            Location = match.LocationNote,
+            HomeTeamId = match.HomeTeamId,
+            AwayTeamId = match.AwayTeamId,
+            Sets = [.. match.Sets.Select(s => new SetSlot
+            {
+                Number = s.Number,
+                HomePoints = s.HomePoints,
+                AwayPoints = s.AwayPoints,
+            })],
+            SetsToWin = match.SetsToWin,
+            PointsPerSet = match.PointsPerSet,
+            WinBy = match.WinBy,
+            TiebreakPoints = match.TiebreakPoints,
+        };
+
+        /// <summary>The sets as the request wants them.</summary>
+        public List<SetScore> Scores() =>
+            [.. Sets.Select(s => new SetScore(s.Number, s.HomePoints, s.AwayPoints))];
+
+        /// <summary>The same sets as the domain validator wants them.</summary>
+        private List<MatchScoring.Set> ScoresForValidation() =>
+            [.. Sets.Select(s => new MatchScoring.Set(s.Number, s.HomePoints, s.AwayPoints))];
+    }
+
+    public sealed class SetSlot
+    {
+        public int Number { get; set; }
+
+        public int HomePoints { get; set; }
+
+        public int AwayPoints { get; set; }
+    }
+}
