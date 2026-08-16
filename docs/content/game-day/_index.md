@@ -74,6 +74,8 @@ twelve gets the same screens and never notices most of them.
   the organiser's board.
 - **[Matchmaking]({{< relref "matchmaking" >}})** — how teams get suggested, the community's own
   fairness knobs, and the optional local model.
+- **[Recording a match]({{< relref "recording-a-match" >}})** — the thirty seconds after the set
+  ends: what is entered, what is worked out, and how to fix it.
 - **[Tournaments]({{< relref "tournaments" >}})** — a bracket thrown together in five minutes, and
   one planned for months.
 - **[Signals]({{< relref "signals" >}})** — wearables, consent, and why the signal stays coarse.

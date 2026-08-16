@@ -26,6 +26,10 @@ Two properties matter more than they look:
   scratch 4v4 moves the ladder less than a proper 2v2 does. See [Rules]({{< relref "." >}}) for the
   rating maths itself.
 
+Both show up at the net rather than in a settings page: the rule set is what decides whether the
+score somebody just typed is accepted without argument. See
+[Recording a match]({{< relref "../game-day/recording-a-match" >}}).
+
 ## Rules that are not about volleyball
 
 Most of what a club argues about is not in any rulebook. Who may bring a guest. What happens to the
