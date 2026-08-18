@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Ssabba.Infrastructure;
 
 namespace Ssabba.Web.Auth;
 
@@ -72,9 +74,27 @@ public static class AuthenticationExtensions
                     NameClaimType = "preferred_username",
                     RoleClaimType = "roles",
                 };
+
+                // After the userinfo claims have landed and before the cookie is issued: sign-in is
+                // the one moment we are certain who this is, so it is where the player row gets
+                // written. Every request after this is a lookup.
+                options.Events.OnTicketReceived = async context =>
+                {
+                    var factory = context.HttpContext.RequestServices
+                        .GetRequiredService<IDbContextFactory<SsabbaDbContext>>();
+
+                    await using var db = await factory.CreateDbContextAsync(context.HttpContext.RequestAborted);
+
+                    await PlayerProvisioner.EnsureAsync(
+                        db,
+                        context.Principal!,
+                        context.HttpContext.RequestAborted);
+                };
             });
 
         services.AddAuthorization();
+        services.AddHttpContextAccessor();
+        services.AddScoped<CurrentPlayerAccessor>();
         services.AddCascadingAuthenticationState();
 
         return services;

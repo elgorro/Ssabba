@@ -31,6 +31,17 @@ first person to sign in creates it, and one community per instance is the expect
 of this guide assumes it. An instance can hold several, at the cost of the caveats in
 [Concept]({{< relref "../concept" >}}).
 
+## Accounts and players
+
+Keycloak knows accounts; Ssabba knows **players**. Signing in for the first time creates the player
+behind your account, named after your Keycloak username, and adds you to the community.
+
+An organiser can also enter someone by hand — useful for the regular who has never signed in, so
+they can still appear on a match sheet. Those two are not joined up automatically: if that person
+later gets an account, signing in gives them a *new* player rather than quietly handing their
+account the rating and match history of the hand-entered one. Merging the two is a deliberate step,
+not a name match.
+
 ## Services
 
 | Service    | Purpose                                    | URL                          |
