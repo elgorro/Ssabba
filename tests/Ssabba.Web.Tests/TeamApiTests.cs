@@ -5,6 +5,7 @@ using Ssabba.Domain;
 using Ssabba.Domain.Entities;
 using Ssabba.Shared;
 using Ssabba.TestSupport;
+using Ssabba.Web.Endpoints;
 
 namespace Ssabba.Web.Tests;
 
@@ -323,36 +324,25 @@ public class TeamApiTests(PostgresFixture postgres) : IAsyncLifetime
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// As with the roster: one instance resolves one community, so the two-community case is put to
+    /// the query itself rather than to the API.
+    /// </summary>
     [Fact]
     public async Task A_team_of_another_community_never_shows_up_here()
     {
-        await SeedCommunityAsync();
+        var communityId = await SeedCommunityAsync();
         var otherCommunityId = await SeedCommunityAsync("Other beach", "other-beach");
 
-        using var client = factory.CreateClientAs("ada");
+        await using var db = postgres.CreateDbContext();
 
-        var ada = await AddPlayerAsync(client, "Ada Lovelace");
-        var grace = await AddPlayerAsync(client, "Grace Hopper");
+        db.Teams.Add(new Team { CommunityId = communityId, Name = "The Regulars", MemberKey = "regulars" });
+        db.Teams.Add(new Team { CommunityId = otherCommunityId, Name = "Elsewhere", MemberKey = "elsewhere" });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await CreateTeamAsync(client, [ada, grace]);
+        var teams = await TeamQueries.ListAsync(db, communityId, ct: TestContext.Current.CancellationToken);
 
-        Guid strangerId;
-
-        await using (var db = postgres.CreateDbContext())
-        {
-            var stranger = new Team { CommunityId = otherCommunityId, Name = "Elsewhere", MemberKey = "elsewhere" };
-
-            db.Teams.Add(stranger);
-            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-            strangerId = stranger.Id;
-        }
-
-        var teams = await ListAsync(client);
-        var detail = await client.GetAsync($"{ApiRoutes.Teams}/{strangerId}", TestContext.Current.CancellationToken);
-
-        Assert.Single(teams);
-        Assert.Equal(HttpStatusCode.NotFound, detail.StatusCode);
+        Assert.Equal("The Regulars", Assert.Single(teams).Name);
     }
 
     [Fact]

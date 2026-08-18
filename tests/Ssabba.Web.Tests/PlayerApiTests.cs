@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Ssabba.Domain.Entities;
 using Ssabba.Shared;
 using Ssabba.TestSupport;
+using Ssabba.Web.Endpoints;
 
 namespace Ssabba.Web.Tests;
 
@@ -199,32 +200,31 @@ public class PlayerApiTests(PostgresFixture postgres) : IAsyncLifetime
         Assert.False(player.IsRetired);
     }
 
+    /// <summary>
+    /// Every read filters by community by hand — there is no global query filter (ADR-0002). The API
+    /// cannot set this up any more, because one instance resolves one community, so the query is
+    /// exercised directly with the two ids it would never see together over HTTP.
+    /// </summary>
     [Fact]
     public async Task A_player_of_another_community_never_shows_up_on_this_roster()
     {
         var communityId = await SeedCommunityAsync();
         var otherCommunityId = await SeedCommunityAsync("Other beach", "other-beach");
 
-        using var client = factory.CreateClientAs(Author);
+        await using var db = postgres.CreateDbContext();
 
-        var id = await CreateAsync(client, "Ada Lovelace");
+        var ada = new Player { DisplayName = "Ada Lovelace", Slug = "ada-lovelace" };
+        var grace = new Player { DisplayName = "Grace Hopper", Slug = "grace-hopper" };
 
-        // The endpoint resolves the oldest community, so the roster it serves is the first one.
-        Assert.NotEqual(communityId, otherCommunityId);
+        db.Players.AddRange(ada, grace);
+        db.CommunityMembers.Add(new CommunityMember { CommunityId = communityId, PlayerId = ada.Id });
+        db.CommunityMembers.Add(new CommunityMember { CommunityId = otherCommunityId, PlayerId = grace.Id });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await using (var db = postgres.CreateDbContext())
-        {
-            db.Players.Add(new Player { DisplayName = "Grace Hopper", Slug = "grace-hopper" });
-            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var players = await PlayerQueries.ListAsync(
+            db, communityId, includeRetired: true, TestContext.Current.CancellationToken);
 
-            var grace = await db.Players.SingleAsync(p => p.Slug == "grace-hopper", TestContext.Current.CancellationToken);
-            db.CommunityMembers.Add(new CommunityMember { CommunityId = otherCommunityId, PlayerId = grace.Id });
-            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        }
-
-        var players = await ListAsync(client, includeRetired: true);
-
-        Assert.Equal(id, Assert.Single(players).Id);
+        Assert.Equal(ada.Id, Assert.Single(players).Id);
     }
 
     [Fact]

@@ -21,7 +21,7 @@
 
 @if (noCommunity)
 {
-    <p>This instance has no community yet, so there are no teams to list.</p>
+    <p>This instance has no community yet, so there are no teams to list. <a href="setup">Set one up</a>.</p>
 }
 else if (teams is null)
 {
@@ -71,7 +71,7 @@ else
     {
         await using var db = await DbFactory.CreateDbContextAsync();
 
-        var communityId = await PlayerQueries.ResolveCommunityIdAsync(db);
+        var communityId = await CommunityQueries.ResolveCommunityIdAsync(db);
         noCommunity = communityId is null;
 
         teams = noCommunity ? null : await TeamQueries.ListAsync(db, communityId!.Value, StandingOnly);

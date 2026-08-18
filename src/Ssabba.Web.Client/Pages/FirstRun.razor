@@ -1,0 +1,89 @@
+@page "/setup"
+@using Microsoft.AspNetCore.Authorization
+@using Ssabba.Shared
+@using Ssabba.Web.Client.Components
+@using System.Net.Http.Json
+@attribute [Authorize]
+@rendermode InteractiveAuto
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Set up your community</PageTitle>
+
+<h1>Set up your community</h1>
+
+@if (loading)
+{
+    <p><em>Loading…</em></p>
+}
+else
+{
+    <p class="text-body-secondary">
+        Everything Ssabba stores belongs to a community: your club, your regular round, your beach.
+        This instance holds one, you are about to create it, and you will own it.
+    </p>
+
+    <CommunityForm Model="model" FormName="first-run" OnValidSubmit="Save">
+        <button type="submit" class="btn btn-primary" disabled="@saving">Create community</button>
+
+        @if (error is not null)
+        {
+            <p class="text-danger mt-3">@error</p>
+        }
+    </CommunityForm>
+}
+
+@code {
+    private readonly CommunityForm.CommunityFormModel model = new();
+    private bool loading = true;
+    private bool saving;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // First run happens once. Anyone arriving late is sent to the community they already have.
+        var response = await Http.GetAsync(ApiRoutes.Community);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("community");
+            return;
+        }
+
+        loading = false;
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        error = null;
+
+        var request = new CreateCommunityRequest(
+            model.Name,
+            model.Slug,
+            model.Description,
+            model.TimeZone,
+            model.Currency,
+            model.Visibility);
+
+        var response = await Http.PostAsJsonAsync(ApiRoutes.Community, request);
+
+        saving = false;
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            Navigation.NavigateTo("community");
+            return;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            error = $"Creating the community failed ({(int)response.StatusCode}).";
+            return;
+        }
+
+        // The membership that just made you the owner is read at sign-in time, so reload rather than
+        // navigate: the page needs the server to look you up again.
+        Navigation.NavigateTo("players", forceLoad: true);
+    }
+}

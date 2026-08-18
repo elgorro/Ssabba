@@ -93,7 +93,7 @@ else
     {
         await using var db = await DbFactory.CreateDbContextAsync();
 
-        var communityId = await PlayerQueries.ResolveCommunityIdAsync(db);
+        var communityId = await CommunityQueries.ResolveCommunityIdAsync(db);
 
         team = communityId is null ? null : await TeamQueries.GetAsync(db, communityId.Value, Id);
 

@@ -73,6 +73,7 @@ app.UseAuthorization();
 
 app.MapStaticAssets();
 app.MapSsabbaAuthEndpoints();
+app.MapCommunityEndpoints();
 app.MapMatchEndpoints();
 app.MapPlayerEndpoints();
 app.MapTeamEndpoints();

@@ -11,6 +11,10 @@
         {
             <span class="nav-link">@context.User.Identity?.Name</span>
         }
+        @if (player is { CommunityId: null })
+        {
+            <a class="nav-link" href="/setup">Set up your community</a>
+        }
         <form action="@AuthenticationExtensions.LogoutPath" method="post">
             <AntiforgeryToken />
             <button type="submit" class="nav-link btn btn-link">Sign out</button>
