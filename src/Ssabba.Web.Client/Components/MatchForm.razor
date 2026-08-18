@@ -93,6 +93,26 @@
         <span class="text-body-secondary ms-2">@Standing()</span>
     </p>
 
+    @* Folded away on purpose: the thirty seconds at the net are for the score, and every group that
+       cares about this sets it once on the community rather than per match. *@
+    @if (!TeamsLocked)
+    {
+        <details class="mb-3">
+            <summary class="text-body-secondary">Correction window</summary>
+            <div class="mt-2" style="max-width: 20rem">
+                <div class="input-group">
+                    <InputNumber id="amend-window" class="form-control" @bind-Value="Model.AmendWindowHours"
+                                 placeholder="the community's setting" />
+                    <span class="input-group-text">hours</span>
+                </div>
+                <div class="form-text">
+                    How long the people who played may go on correcting this one. Empty follows the
+                    community; 0 leaves it to organisers.
+                </div>
+            </div>
+        </details>
+    }
+
     @ChildContent
 </EditForm>
 
@@ -193,6 +213,16 @@
         public Guid AwayTeamId { get; set; }
 
         public List<SetSlot> Sets { get; set; } = [new SetSlot { Number = 1 }];
+
+        /// <summary>
+        /// An override of the community's correction window, in hours. Empty inherits it. Recording
+        /// only: an edit that could extend its own deadline is no deadline.
+        /// </summary>
+        [Range(0, 8760, ErrorMessage = "A correction window runs from 0 hours to a year.")]
+        public int? AmendWindowHours { get; set; }
+
+        /// <summary>What the API takes, which is minutes.</summary>
+        public int? AmendWindowMinutes => AmendWindowHours * 60;
 
         /// <summary>
         /// The scoring the match is played under. Defaulted to the beach game until a recorded match

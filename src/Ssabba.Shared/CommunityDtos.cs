@@ -17,6 +17,11 @@ public record CommunityDetail(
     string Visibility,
     /// <summary>Stable public identifier, handed to other instances when communities link up.</summary>
     Guid PublicKeyId,
+    /// <summary>
+    /// Minutes the people who played may go on correcting a result. Null takes the default of 60
+    /// hours; zero leaves amending to organisers alone.
+    /// </summary>
+    int? AmendWindowMinutes,
     DateTimeOffset CreatedAt);
 
 /// <summary>
@@ -30,7 +35,12 @@ public record CreateCommunityRequest(
     string? Description,
     string? TimeZone,
     string? Currency,
-    string? Visibility);
+    string? Visibility,
+    /// <summary>
+    /// Minutes the people who played may go on correcting a result. Null takes the default of 60
+    /// hours; zero leaves amending to organisers alone.
+    /// </summary>
+    int? AmendWindowMinutes = null);
 
 /// <summary>
 /// Payload for editing the community. <c>PublicKeyId</c> is absent by design: it survives a rename,
@@ -42,4 +52,9 @@ public record UpdateCommunityRequest(
     string? Description,
     string? TimeZone,
     string? Currency,
-    string? Visibility);
+    string? Visibility,
+    /// <summary>
+    /// Minutes the people who played may go on correcting a result. Null takes the default of 60
+    /// hours; zero leaves amending to organisers alone.
+    /// </summary>
+    int? AmendWindowMinutes = null);

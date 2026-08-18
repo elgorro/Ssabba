@@ -9,13 +9,16 @@ using Ssabba.TestSupport;
 namespace Ssabba.Web.Tests;
 
 /// <summary>
-/// The real host, with two substitutions: the database points at the test container and the OIDC
-/// handshake is replaced by <see cref="TestAuthHandler"/>. Migrations are applied by the fixture, so
-/// startup migration is switched off.
+/// The real host, with three substitutions: the database points at the test container, the OIDC
+/// handshake is replaced by <see cref="TestAuthHandler"/>, and the clock is one a test can move.
+/// Migrations are applied by the fixture, so startup migration is switched off.
 /// </summary>
 public sealed class SsabbaWebApplicationFactory(PostgresFixture postgres) : WebApplicationFactory<Program>
 {
     private readonly string keyPath = Directory.CreateTempSubdirectory("ssabba-keys").FullName;
+
+    /// <summary>The host's clock, for tests about how long something stays amendable.</summary>
+    public TestClock Clock { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -30,6 +33,8 @@ public sealed class SsabbaWebApplicationFactory(PostgresFixture postgres) : WebA
 
         builder.ConfigureTestServices(services =>
         {
+            services.AddSingleton<TimeProvider>(Clock);
+
             services.AddAuthentication(options =>
                 {
                     options.DefaultScheme = TestAuthHandler.SchemeName;

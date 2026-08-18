@@ -33,8 +33,8 @@ public static class CommunityEndpoints
             CurrentPlayerAccessor current,
             CancellationToken ct) =>
         {
-            // First run has no community, so the caller has no membership either: being a signed-in
-            // player is all the standing there is to have at this point.
+            // First run has no community, so the caller has no membership either, and no policy can
+            // speak for them: being a signed-in player is all the standing there is to have here.
             if (await current.GetAsync(ct) is not { } player)
             {
                 return Results.Forbid();
@@ -50,22 +50,14 @@ public static class CommunityEndpoints
         group.MapPut("/", async (
             UpdateCommunityRequest request,
             IDbContextFactory<SsabbaDbContext> factory,
-            CurrentPlayerAccessor current,
             CancellationToken ct) =>
         {
-            // The first role check in the app. A policy-based scheme is its own piece of work; until
-            // then the rule lives where it applies, in plain sight.
-            if (await current.GetAsync(ct) is not { Role: CommunityRole.Owner or CommunityRole.Admin })
-            {
-                return Results.Forbid();
-            }
-
             await using var db = await factory.CreateDbContextAsync(ct);
 
             return await CommunityQueries.UpdateAsync(db, request, ct)
                 ? Results.NoContent()
                 : Results.NotFound();
-        }).RequireAuthorization();
+        }).RequireAuthorization(CommunityPolicies.Administrator);
 
         return endpoints;
     }
@@ -120,6 +112,7 @@ public static class CommunityQueries
                 c.Currency,
                 c.Visibility.ToString(),
                 c.PublicKeyId,
+                c.AmendWindowMinutes,
                 c.CreatedAt))
             .FirstOrDefaultAsync(ct);
     }
@@ -149,6 +142,7 @@ public static class CommunityQueries
             TimeZone = Trim(request.TimeZone) ?? "UTC",
             Currency = NormalizeCurrency(request.Currency),
             Visibility = ParseVisibility(request.Visibility),
+            AmendWindowMinutes = NonNegative(request.AmendWindowMinutes),
         };
 
         db.Communities.Add(community);
@@ -183,6 +177,7 @@ public static class CommunityQueries
             community.Currency,
             community.Visibility.ToString(),
             community.PublicKeyId,
+            community.AmendWindowMinutes,
             community.CreatedAt);
     }
 
@@ -208,6 +203,7 @@ public static class CommunityQueries
         community.TimeZone = Trim(request.TimeZone) ?? "UTC";
         community.Currency = NormalizeCurrency(request.Currency);
         community.Visibility = ParseVisibility(request.Visibility);
+        community.AmendWindowMinutes = NonNegative(request.AmendWindowMinutes);
 
         await db.SaveChangesAsync(ct);
 
@@ -247,6 +243,11 @@ public static class CommunityQueries
         string.IsNullOrWhiteSpace(value)
             ? throw new ArgumentException("A community needs a name.", nameof(value))
             : value.Trim();
+
+    /// <summary>
+    /// A window cannot run backwards; a negative one is taken as unset rather than refused.
+    /// </summary>
+    private static int? NonNegative(int? minutes) => minutes is >= 0 ? minutes : null;
 
     private static string? Trim(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

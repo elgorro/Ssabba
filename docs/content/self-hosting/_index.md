@@ -32,6 +32,12 @@ becomes the community's **owner**. That happens once; everyone who signs in afte
 as a member, and an owner or admin can rename the community later at `/community`. Renaming is safe:
 the identifier other instances know you by is assigned once and never changes.
 
+Two settings on that page decide who may do what. **Roles** — guest, member, organiser, admin,
+owner — carry the permissions; a membership that is pending or suspended carries none, whatever its
+role. The **correction window** says how long the people who played may go on fixing a result of
+their own before it belongs to the organisers: 60 hours unless you say otherwise, and zero if you
+would rather corrections went through an organiser from the start.
+
 One community per instance is not merely the expected setup, it is the supported one. Two groups
 that want to see each other's results federate, each on its own instance — see
 [Concept]({{< relref "../concept" >}}).

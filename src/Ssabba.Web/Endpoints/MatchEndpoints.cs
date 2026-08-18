@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Ssabba.Domain;
 using Ssabba.Domain.Entities;
 using Ssabba.Domain.Rating;
 using Ssabba.Infrastructure;
 using Ssabba.Shared;
+using Ssabba.Web.Auth;
 
 namespace Ssabba.Web.Endpoints;
 
@@ -60,13 +62,21 @@ public static class MatchEndpoints
         group.MapPost("/", async (
             CreateMatchRequest request,
             IDbContextFactory<SsabbaDbContext> factory,
+            CurrentPlayerAccessor current,
             CancellationToken ct) =>
         {
+            // The policy has already established that this is an active member; what is left is
+            // which member, so the result can be signed and scoped to their community.
+            if (await current.GetAsync(ct) is not { CommunityId: { } communityId, CommunityMemberId: { } memberId })
+            {
+                return Results.Forbid();
+            }
+
             await using var db = await factory.CreateDbContextAsync(ct);
 
             try
             {
-                var id = await MatchQueries.CreateAsync(db, request, ct);
+                var id = await MatchQueries.CreateAsync(db, request, communityId, memberId, ct);
 
                 return Results.Created($"{ApiRoutes.Matches}/{id}", id);
             }
@@ -75,12 +85,14 @@ public static class MatchEndpoints
                 // An unknown team or an impossible score is the caller's mistake, not a fault.
                 return Results.BadRequest(e.Message);
             }
-        }).RequireAuthorization();
+        }).RequireAuthorization(CommunityPolicies.ActiveMember);
 
         group.MapPut("/{id:guid}", async (
             Guid id,
             UpdateMatchRequest request,
             IDbContextFactory<SsabbaDbContext> factory,
+            IAuthorizationService authorization,
+            HttpContext http,
             CancellationToken ct) =>
         {
             await using var db = await factory.CreateDbContextAsync(ct);
@@ -89,6 +101,11 @@ public static class MatchEndpoints
             if (communityId is null)
             {
                 return Results.NotFound();
+            }
+
+            if (await Amendable(db, authorization, http, communityId.Value, id, ct) is { } refusal)
+            {
+                return refusal;
             }
 
             try
@@ -101,11 +118,13 @@ public static class MatchEndpoints
             {
                 return Results.BadRequest(e.Message);
             }
-        }).RequireAuthorization();
+        }).RequireAuthorization(CommunityPolicies.ActiveMember);
 
         group.MapDelete("/{id:guid}", async (
             Guid id,
             IDbContextFactory<SsabbaDbContext> factory,
+            IAuthorizationService authorization,
+            HttpContext http,
             CancellationToken ct) =>
         {
             await using var db = await factory.CreateDbContextAsync(ct);
@@ -116,12 +135,43 @@ public static class MatchEndpoints
                 return Results.NotFound();
             }
 
+            if (await Amendable(db, authorization, http, communityId.Value, id, ct) is { } refusal)
+            {
+                return refusal;
+            }
+
             return await MatchQueries.DeleteAsync(db, communityId.Value, id, ct)
                 ? Results.NoContent()
                 : Results.NotFound();
-        }).RequireAuthorization();
+        }).RequireAuthorization(CommunityPolicies.ActiveMember);
 
         return endpoints;
+    }
+
+    /// <summary>
+    /// The refusal to return before touching a recorded result, or <c>null</c> when the caller may
+    /// amend it. Correcting and striking ask the same question, so they ask it in one place.
+    /// </summary>
+    /// <remarks>
+    /// A match nobody may see is 404 before it is 403 — which gives nothing away, since reading a
+    /// match needs no account at all.
+    /// </remarks>
+    private static async Task<IResult?> Amendable(
+        SsabbaDbContext db,
+        IAuthorizationService authorization,
+        HttpContext http,
+        Guid communityId,
+        Guid matchId,
+        CancellationToken ct)
+    {
+        if (await MatchQueries.AmendContextAsync(db, communityId, matchId, ct) is not { } context)
+        {
+            return Results.NotFound();
+        }
+
+        var result = await authorization.AuthorizeAsync(http.User, context, CommunityPolicies.AmendMatch);
+
+        return result.Succeeded ? null : Results.Forbid();
     }
 }
 
@@ -279,10 +329,20 @@ public static class MatchQueries
 
     /// <summary>
     /// Records a match and, because it is entered as agreed, immediately folds the result into the
-    /// players' ratings. The community and format are derived from the teams rather than asked for:
-    /// a team already belongs to a community, and its size is the format.
+    /// players' ratings. The format is derived from the teams rather than asked for: a team already
+    /// belongs to a community, and its size is the format.
     /// </summary>
-    public static async Task<Guid> CreateAsync(SsabbaDbContext db, CreateMatchRequest request, CancellationToken ct = default)
+    /// <param name="actingCommunityId">
+    /// The community the caller is a member of. The teams must belong to it: nobody records results
+    /// into a group they do not play in, whatever the two team ids happen to agree on.
+    /// </param>
+    /// <param name="actingMemberId">Who is entering it, kept on the match as <c>RecordedByMemberId</c>.</param>
+    public static async Task<Guid> CreateAsync(
+        SsabbaDbContext db,
+        CreateMatchRequest request,
+        Guid actingCommunityId,
+        Guid actingMemberId,
+        CancellationToken ct = default)
     {
         if (request.HomeTeamId == request.AwayTeamId)
         {
@@ -310,6 +370,12 @@ public static class MatchQueries
         }
 
         var communityId = home.CommunityId;
+
+        if (communityId != actingCommunityId)
+        {
+            throw new ArgumentException(
+                "A match can only be recorded in the community you belong to.", nameof(request));
+        }
 
         // The format is how many a side fielded. An uneven match is rated as the larger of the two.
         var playersPerSide = Math.Max(home.Members.Count, away.Members.Count);
@@ -343,7 +409,9 @@ public static class MatchQueries
             HomeTeamId = request.HomeTeamId,
             AwayTeamId = request.AwayTeamId,
             Status = MatchStatus.Confirmed,
+            RecordedByMemberId = actingMemberId,
             ConfirmedAt = DateTimeOffset.UtcNow,
+            AmendWindowMinutes = NonNegative(request.AmendWindowMinutes),
             RuleSetId = ruleSet?.Id,
             // Snapshot the scoring, so later edits to the rule set cannot rewrite this result.
             SetsToWin = setsToWin,
@@ -443,6 +511,49 @@ public static class MatchQueries
                 member.MatchesPlayed++;
             }
         }
+    }
+
+    /// <summary>
+    /// What the amend policy needs to know about one match: whose community it is, when it was
+    /// entered, who played in it, and which windows apply. <c>null</c> when the community has no
+    /// such match.
+    /// </summary>
+    /// <remarks>
+    /// The lineups are the participants, not the appearances — appearances exist only once a match
+    /// has been rated, and an unrated result is exactly the one somebody wants to fix.
+    /// </remarks>
+    public static async Task<MatchAmendContext?> AmendContextAsync(
+        SsabbaDbContext db,
+        Guid communityId,
+        Guid matchId,
+        CancellationToken ct = default)
+    {
+        // The two lineups are read apart and joined here: one SQL projection cannot concatenate two
+        // collection subqueries, the same reason team names are composed in memory.
+        var row = await db.Matches
+            .AsNoTracking()
+            .Where(m => m.CommunityId == communityId && m.Id == matchId && m.DeletedAt == null)
+            .Select(m => new
+            {
+                m.CommunityId,
+                // Entered, not played: the window is about how long ago somebody typed it. Matches
+                // from before this was tracked fall back to when they were played.
+                RecordedAt = m.ConfirmedAt ?? m.PlayedAt,
+                Home = m.HomeTeam!.Members.Select(x => x.PlayerId).ToList(),
+                Away = m.AwayTeam!.Members.Select(x => x.PlayerId).ToList(),
+                MatchWindow = m.AmendWindowMinutes,
+                CommunityWindow = m.Community!.AmendWindowMinutes,
+            })
+            .FirstOrDefaultAsync(ct);
+
+        return row is null
+            ? null
+            : new MatchAmendContext(
+                row.CommunityId,
+                row.RecordedAt,
+                [.. row.Home, .. row.Away],
+                row.MatchWindow,
+                row.CommunityWindow);
     }
 
     /// <summary>
@@ -627,6 +738,12 @@ public static class MatchQueries
             teams.SingleOrDefault(t => t.Id == match.HomeTeamId)?.Members ?? [],
             teams.SingleOrDefault(t => t.Id == match.AwayTeamId)?.Members ?? []);
     }
+
+    /// <summary>
+    /// A window cannot run backwards. A negative one is treated as no setting at all rather than
+    /// refused, so a stray minus sign inherits instead of blocking a result at the net.
+    /// </summary>
+    private static int? NonNegative(int? minutes) => minutes is >= 0 ? minutes : null;
 
     /// <summary>
     /// Refuses a score that could not have been played under these rules, in the words the API hands

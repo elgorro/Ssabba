@@ -39,6 +39,20 @@
         </div>
     </div>
 
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label class="form-label" for="community-amend-window">Correction window</label>
+            <div class="input-group">
+                <InputNumber id="community-amend-window" class="form-control" @bind-Value="Model.AmendWindowHours" placeholder="60" />
+                <span class="input-group-text">hours</span>
+            </div>
+            <div class="form-text">
+                How long the people who played may go on correcting a result. Leave it empty for the
+                default of 60 hours, or set it to 0 to leave corrections to organisers.
+            </div>
+        </div>
+    </div>
+
     <div class="mb-3">
         <label class="form-label" for="community-description">Description</label>
         <InputTextArea id="community-description" class="form-control" rows="3" @bind-Value="Model.Description" />
@@ -83,6 +97,16 @@
 
         public string Visibility { get; set; } = "Private";
 
+        /// <summary>
+        /// Asked for in hours because that is how anyone thinks about it; stored in minutes because
+        /// a single match may want finer. Empty means the app's default.
+        /// </summary>
+        [Range(0, 8760, ErrorMessage = "A correction window runs from 0 hours to a year.")]
+        public int? AmendWindowHours { get; set; }
+
+        /// <summary>What the API takes, which is minutes.</summary>
+        public int? AmendWindowMinutes => AmendWindowHours * 60;
+
         public static CommunityFormModel From(CommunityDetail community) => new()
         {
             Name = community.Name,
@@ -91,6 +115,7 @@
             TimeZone = community.TimeZone,
             Currency = community.Currency,
             Visibility = community.Visibility,
+            AmendWindowHours = community.AmendWindowMinutes / 60,
         };
     }
 }

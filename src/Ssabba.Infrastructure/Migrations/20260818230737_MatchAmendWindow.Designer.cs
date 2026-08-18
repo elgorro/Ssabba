@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Ssabba.Infrastructure;
@@ -11,9 +12,11 @@ using Ssabba.Infrastructure;
 namespace Ssabba.Infrastructure.Migrations
 {
     [DbContext(typeof(SsabbaDbContext))]
-    partial class SsabbaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260818230737_MatchAmendWindow")]
+    partial class MatchAmendWindow
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

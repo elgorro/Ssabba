@@ -30,6 +30,13 @@ public class Community
     /// </summary>
     public Guid PublicKeyId { get; set; } = Guid.CreateVersion7();
 
+    /// <summary>
+    /// How long a participant may go on correcting a result they played in, in minutes from when it
+    /// was entered. A single match may override it. <c>null</c> takes the app's default of 60 hours;
+    /// <c>0</c> leaves amending to organisers alone.
+    /// </summary>
+    public int? AmendWindowMinutes { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public ICollection<CommunityMember> Members { get; set; } = [];

@@ -52,6 +52,16 @@ there.
 
 ## Fixing it afterwards
 
+**Who may.** Organisers, admins and the owner may correct or strike any result — running matches is
+the job. Everyone else may fix only a match they themselves played in, and only for a while
+afterwards: **60 hours** by default, which covers a Friday evening through Monday morning. A group
+that wants longer, shorter, or none at all sets its own window at `/community`; setting it to zero
+leaves corrections to organisers. A single match can carry its own window, set when it is recorded.
+
+Nobody else can touch it. Amending a result is not editing a row — it hands back the rating the match
+took and applies the new one, so somebody outside it doing so would move four other people's ladder
+positions.
+
 Open the match and edit it. Correcting a score gives back the rating the old one moved and applies
 the new one, so the ladder ends where entering it right the first time would have. Deleting hands the
 rating back and strikes the match from the record — the row stays, so a rating that has already moved

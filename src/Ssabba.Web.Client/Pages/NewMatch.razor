@@ -59,7 +59,8 @@ else
             model.Location,
             model.HomeTeamId,
             model.AwayTeamId,
-            model.Scores());
+            model.Scores(),
+            model.AmendWindowMinutes);
 
         var response = await Http.PostAsJsonAsync(ApiRoutes.Matches, request);
 

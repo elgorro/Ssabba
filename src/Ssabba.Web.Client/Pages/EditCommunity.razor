@@ -73,7 +73,8 @@ else
             model.Description,
             model.TimeZone,
             model.Currency,
-            model.Visibility);
+            model.Visibility,
+            model.AmendWindowMinutes);
 
         var response = await Http.PutAsJsonAsync(ApiRoutes.Community, request);
 
