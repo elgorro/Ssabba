@@ -27,8 +27,13 @@ docker compose up -d`.
 ## Your community
 
 Everything Ssabba stores belongs to a **community**: your club, your regular round, your beach. The
-first person to sign in creates it, and one community per instance is the expected setup — the rest
-of this guide assumes it. An instance can hold several, at the cost of the caveats in
+first person to sign in is taken to a short form at `/setup` — a name, a time zone, a currency — and
+becomes the community's **owner**. That happens once; everyone who signs in afterwards simply joins
+as a member, and an owner or admin can rename the community later at `/community`. Renaming is safe:
+the identifier other instances know you by is assigned once and never changes.
+
+One community per instance is not merely the expected setup, it is the supported one. Two groups
+that want to see each other's results federate, each on its own instance — see
 [Concept]({{< relref "../concept" >}}).
 
 ## Accounts and players

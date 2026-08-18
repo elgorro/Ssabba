@@ -20,7 +20,7 @@ public static class TeamEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
 
             return communityId is null
                 ? Results.NotFound()
@@ -34,7 +34,7 @@ public static class TeamEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();
@@ -52,7 +52,7 @@ public static class TeamEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();
@@ -72,7 +72,7 @@ public static class TeamEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();
@@ -100,7 +100,7 @@ public static class TeamEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();
@@ -125,7 +125,7 @@ public static class TeamEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();

@@ -49,8 +49,9 @@ public static class PlayerProvisioner
         db.Players.Add(player);
 
         // Membership needs a community to belong to. Creating the first one, and binding its owner,
-        // is first-run work that happens elsewhere; until then a player simply belongs nowhere.
-        if (await PlayerQueries.ResolveCommunityIdAsync(db, ct) is { } communityId)
+        // is first run's work — the setup form at /setup, because only a person can name it. Until
+        // somebody has been through it, a player simply belongs nowhere.
+        if (await CommunityQueries.ResolveCommunityIdAsync(db, ct) is { } communityId)
         {
             db.CommunityMembers.Add(new CommunityMember
             {

@@ -84,6 +84,13 @@ It reads `HttpContext`, so it serves the minimal API and server-rendered compone
 **interactive** Blazor circuit has no live request — pass such a component what it needs as a
 parameter from a server-rendered parent rather than injecting the accessor into it.
 
+**Which community is never a question.** `CommunityQueries.ResolveCommunityIdAsync`
+(`src/Ssabba.Web/Endpoints/CommunityEndpoints.cs`) is the single answer: the instance's one
+community, `null` before first run, and an exception when the database holds two — a state the app
+has no way to tell apart and should not guess at. Endpoints and server-rendered pages call it and
+404 on `null`; only `CommunityQueries.CreateFirstAsync` ever writes a `Community`, and it is also
+what binds its creator as `Owner` — the one membership nobody grants.
+
 `TestAuthHandler` stands in for the Keycloak handshake, and because that handler *is* a test's
 sign-in, it calls `PlayerProvisioner.EnsureAsync` itself. So a test client created with
 `CreateClientAs("ada")` is a real player on the roster, not a bare claims principal — worth

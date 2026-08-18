@@ -1,0 +1,96 @@
+@using System.ComponentModel.DataAnnotations
+@using Ssabba.Shared
+
+@* The fields shared by first run and editing the community. Saving stays with the page that owns it. *@
+<EditForm Model="Model" OnValidSubmit="OnValidSubmit" FormName="@FormName">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="row">
+        <div class="col mb-3">
+            <label class="form-label" for="community-name">Name</label>
+            <InputText id="community-name" class="form-control" @bind-Value="Model.Name" />
+        </div>
+        <div class="col mb-3">
+            <label class="form-label" for="community-slug">Slug</label>
+            <InputText id="community-slug" class="form-control" @bind-Value="Model.Slug" placeholder="derived from the name" />
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col mb-3">
+            <label class="form-label" for="community-time-zone">Time zone</label>
+            <InputText id="community-time-zone" class="form-control" @bind-Value="Model.TimeZone" placeholder="Europe/Zurich" />
+            <div class="form-text">Sessions are scheduled against this.</div>
+        </div>
+        <div class="col mb-3">
+            <label class="form-label" for="community-currency">Currency</label>
+            <InputText id="community-currency" class="form-control" @bind-Value="Model.Currency" placeholder="EUR" />
+            <div class="form-text">The ISO-4217 code every amount is booked in.</div>
+        </div>
+        <div class="col mb-3">
+            <label class="form-label" for="community-visibility">Visibility</label>
+            <InputSelect id="community-visibility" class="form-select" @bind-Value="Model.Visibility">
+                @foreach (var visibility in Visibilities)
+                {
+                    <option value="@visibility">@visibility</option>
+                }
+            </InputSelect>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="community-description">Description</label>
+        <InputTextArea id="community-description" class="form-control" rows="3" @bind-Value="Model.Description" />
+    </div>
+
+    @ChildContent
+</EditForm>
+
+@code {
+    private static readonly string[] Visibilities = ["Private", "Unlisted", "Public"];
+
+    [Parameter, EditorRequired]
+    public CommunityFormModel Model { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public string FormName { get; set; } = "community";
+
+    [Parameter]
+    public EventCallback OnValidSubmit { get; set; }
+
+    /// <summary>The buttons, which differ between first run and editing.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Flattened for binding; the page turns it into the request record.</summary>
+    public sealed class CommunityFormModel
+    {
+        [Required, StringLength(160)]
+        public string Name { get; set; } = string.Empty;
+
+        [StringLength(120)]
+        public string? Slug { get; set; }
+
+        [StringLength(2000)]
+        public string? Description { get; set; }
+
+        [StringLength(64)]
+        public string? TimeZone { get; set; }
+
+        [StringLength(3, MinimumLength = 3)]
+        public string? Currency { get; set; } = "EUR";
+
+        public string Visibility { get; set; } = "Private";
+
+        public static CommunityFormModel From(CommunityDetail community) => new()
+        {
+            Name = community.Name,
+            Slug = community.Slug,
+            Description = community.Description,
+            TimeZone = community.TimeZone,
+            Currency = community.Currency,
+            Visibility = community.Visibility,
+        };
+    }
+}

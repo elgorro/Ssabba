@@ -26,7 +26,7 @@ public static class MatchEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return new PagedResult<MatchSummary>([], page, pageSize, 0);
@@ -46,7 +46,7 @@ public static class MatchEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();
@@ -85,7 +85,7 @@ public static class MatchEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();
@@ -110,7 +110,7 @@ public static class MatchEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();

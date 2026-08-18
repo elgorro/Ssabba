@@ -20,7 +20,7 @@ public static class PlayerEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
 
             return communityId is null
                 ? Results.NotFound()
@@ -34,7 +34,7 @@ public static class PlayerEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();
@@ -52,7 +52,7 @@ public static class PlayerEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();
@@ -79,7 +79,7 @@ public static class PlayerEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();
@@ -104,7 +104,7 @@ public static class PlayerEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();
@@ -122,7 +122,7 @@ public static class PlayerEndpoints
         {
             await using var db = await factory.CreateDbContextAsync(ct);
 
-            var communityId = await PlayerQueries.ResolveCommunityIdAsync(db, ct);
+            var communityId = await CommunityQueries.ResolveCommunityIdAsync(db, ct);
             if (communityId is null)
             {
                 return Results.NotFound();
@@ -144,17 +144,6 @@ public static class PlayerEndpoints
 /// </summary>
 public static class PlayerQueries
 {
-    /// <summary>
-    /// The community this instance is for. One instance, one community is the supported deployment,
-    /// so the roster does not ask which one; <c>null</c> means the instance has none yet.
-    /// </summary>
-    public static async Task<Guid?> ResolveCommunityIdAsync(SsabbaDbContext db, CancellationToken ct = default) =>
-        await db.Communities
-            .AsNoTracking()
-            .OrderBy(c => c.CreatedAt)
-            .Select(c => (Guid?)c.Id)
-            .FirstOrDefaultAsync(ct);
-
     public static async Task<List<PlayerSummary>> ListAsync(
         SsabbaDbContext db,
         Guid communityId,

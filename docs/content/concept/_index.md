@@ -16,13 +16,16 @@ A **community** is that group — a club, a regular Tuesday round, a beach. It i
 ownership in the data model: almost every table carries a `CommunityId`, and the community owns its
 venues, seasons, sessions, matches, ledger and equipment.
 
-The normal deployment is one instance for one community. You self-host for your club, the first
-person to sign in creates the community, and everything hangs off it. Nothing in the app asks you
-to think about communities after that.
+One instance is for one community. You self-host for your club; the first person to sign in is sent
+to a short setup form, names the community and becomes its owner. Everyone who signs in after that
+joins it as a member. Nothing in the app asks you to think about communities after that, because
+there is nothing to ask: an instance resolves *the* community, and an instance holding a second one
+is a broken instance that says so rather than quietly picking one.
 
-An instance **may** run more than one — a shared server for a handful of clubs, or one club that
-keeps its Tuesday round and its tournament crowd apart. That is the advanced case, and it is worth
-knowing what it costs:
+The way two groups meet is **federation** — a `CommunityLink` between two instances, each still
+owning its own data — not two communities sharing a database.
+
+The schema does permit several, and the reasons it is not a supported deployment are worth knowing:
 
 - There is no tenancy framework: no tenant middleware, no global query filter. Isolation is every
   query filtering by `CommunityId` itself, and every write refusing to mix communities — the way

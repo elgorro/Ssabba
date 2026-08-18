@@ -1,0 +1,96 @@
+@page "/community"
+@using Microsoft.AspNetCore.Authorization
+@using Ssabba.Shared
+@using Ssabba.Web.Client.Components
+@using System.Net.Http.Json
+@attribute [Authorize]
+@rendermode InteractiveAuto
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Community</PageTitle>
+
+<h1>Community</h1>
+
+@if (loading)
+{
+    <p><em>Loading…</em></p>
+}
+else if (model is null)
+{
+    <p>This instance has no community yet. <a href="setup">Set one up</a>.</p>
+}
+else
+{
+    <CommunityForm Model="model" FormName="edit-community" OnValidSubmit="Save">
+        <button type="submit" class="btn btn-primary" disabled="@saving">Save</button>
+        <a class="btn btn-secondary" href="players">Cancel</a>
+
+        <p class="text-body-secondary mt-3">
+            Renaming is safe: the identifier other instances know this community by is assigned once
+            and never changes, so any link made to it survives.
+        </p>
+
+        @if (error is not null)
+        {
+            <p class="text-danger">@error</p>
+        }
+    </CommunityForm>
+}
+
+@code {
+    private CommunityForm.CommunityFormModel? model;
+    private bool loading = true;
+    private bool saving;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await Http.GetAsync(ApiRoutes.Community);
+
+        if (response.IsSuccessStatusCode
+            && await response.Content.ReadFromJsonAsync<CommunityDetail>() is { } community)
+        {
+            model = CommunityForm.CommunityFormModel.From(community);
+        }
+
+        loading = false;
+    }
+
+    private async Task Save()
+    {
+        if (model is null)
+        {
+            return;
+        }
+
+        saving = true;
+        error = null;
+
+        var request = new UpdateCommunityRequest(
+            model.Name,
+            model.Slug,
+            model.Description,
+            model.TimeZone,
+            model.Currency,
+            model.Visibility);
+
+        var response = await Http.PutAsJsonAsync(ApiRoutes.Community, request);
+
+        saving = false;
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            error = "Only an owner or an admin may change the community.";
+            return;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            error = $"Saving failed ({(int)response.StatusCode}).";
+            return;
+        }
+
+        Navigation.NavigateTo("players");
+    }
+}
