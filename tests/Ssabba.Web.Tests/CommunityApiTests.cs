@@ -196,5 +196,11 @@ public class CommunityApiTests(PostgresFixture postgres) : IAsyncLifetime
     private static CreateCommunityRequest Request(string name, string? slug = null) =>
         new(name, slug, "The regulars", "Europe/Zurich", "chf", "Private");
 
-    public async ValueTask DisposeAsync() => await factory.DisposeAsync();
+    public ValueTask DisposeAsync()
+    {
+        factory.Dispose();
+        GC.SuppressFinalize(this);
+
+        return ValueTask.CompletedTask;
+    }
 }
