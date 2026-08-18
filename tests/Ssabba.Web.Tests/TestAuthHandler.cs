@@ -1,8 +1,11 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Ssabba.Infrastructure;
+using Ssabba.Web.Auth;
 
 namespace Ssabba.Web.Tests;
 
@@ -14,27 +17,42 @@ namespace Ssabba.Web.Tests;
 public sealed class TestAuthHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
-    UrlEncoder encoder)
+    UrlEncoder encoder,
+    IDbContextFactory<SsabbaDbContext> factory)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = "Test";
     public const string UserHeader = "X-Test-User";
 
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    /// <summary>The subject a given test user signs in under, stable across requests.</summary>
+    public static string SubjectFor(string user) => $"test|{user}";
+
+    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (Request.Headers[UserHeader].FirstOrDefault() is not { Length: > 0 } user)
         {
-            return Task.FromResult(AuthenticateResult.NoResult());
+            return AuthenticateResult.NoResult();
         }
 
         var identity = new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, user), new Claim("preferred_username", user)],
+            [
+                new Claim("sub", SubjectFor(user)),
+                new Claim(ClaimTypes.NameIdentifier, user),
+                new Claim("preferred_username", user),
+            ],
             SchemeName,
             "preferred_username",
             "roles");
 
-        var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName);
+        var principal = new ClaimsPrincipal(identity);
 
-        return Task.FromResult(AuthenticateResult.Success(ticket));
+        // This handler is where a test's sign-in happens, so it provisions the player exactly as the
+        // OIDC handshake does — the same call, not a stand-in for it.
+        await using (var db = await factory.CreateDbContextAsync(Context.RequestAborted))
+        {
+            await PlayerProvisioner.EnsureAsync(db, principal, Context.RequestAborted);
+        }
+
+        return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
     }
 }

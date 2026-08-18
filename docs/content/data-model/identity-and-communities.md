@@ -106,6 +106,16 @@ newcomer in another. `Player` carries no rating at all. The index
 lets an organiser record someone who has never signed in. Both `Slug` and `SubjectId` are unique
 only among rows where `DeletedAt IS NULL`, so a deleted player does not block reuse.
 
+**Signing in makes you a player.** The first successful sign-in writes a `Player` carrying that
+`sub`, with the slug derived from the Keycloak username; where the instance already has a
+community, it also adds a `CommunityMember` as `Member`. Later sign-ins find the row and change
+nothing. A taken slug is numbered (`chris-2`) rather than refused — nobody may be locked out of
+their own first sign-in.
+
+**Signing in never claims a player entered by hand**, even when the names match exactly. Such a
+player carries a rating and a match history, and an account nobody has vouched for must not
+inherit either by matching a name. Adopting one is a deliberate act, and needs a flow of its own.
+
 **One profile row per player**, keyed by `PlayerId` itself — a shared primary key, cascading from
 `Player`.
 

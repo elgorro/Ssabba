@@ -1,11 +1,27 @@
 @using Ssabba.Web.Auth
+@inject CurrentPlayerAccessor Current
 
 <AuthorizeView>
     <Authorized>
-        <span class="nav-link">@context.User.Identity?.Name</span>
+        @if (player is not null)
+        {
+            <a class="nav-link" href="@($"/players/{player.Slug}")">@player.DisplayName</a>
+        }
+        else
+        {
+            <span class="nav-link">@context.User.Identity?.Name</span>
+        }
         <form action="@AuthenticationExtensions.LogoutPath" method="post">
             <AntiforgeryToken />
             <button type="submit" class="nav-link btn btn-link">Sign out</button>
         </form>
     </Authorized>
 </AuthorizeView>
+
+@code {
+    private CurrentPlayer? player;
+
+    // Nothing links to yet-unresolved players: someone who signed in before this existed, or before
+    // the instance had a community, still sees their name as plain text.
+    protected override async Task OnInitializedAsync() => player = await Current.GetAsync();
+}

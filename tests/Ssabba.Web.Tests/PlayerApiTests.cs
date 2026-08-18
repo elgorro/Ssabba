@@ -15,6 +15,9 @@ namespace Ssabba.Web.Tests;
 [Trait(TestCategories.Category, TestCategories.Integration)]
 public class PlayerApiTests(PostgresFixture postgres) : IAsyncLifetime
 {
+    /// <summary>The user these tests sign in as; their own player row is not part of any roster assertion.</summary>
+    private const string Author = "ada";
+
     private SsabbaWebApplicationFactory factory = null!;
 
     public async ValueTask InitializeAsync()
@@ -71,7 +74,7 @@ public class PlayerApiTests(PostgresFixture postgres) : IAsyncLifetime
     {
         await SeedCommunityAsync();
 
-        using var client = factory.CreateClientAs("ada");
+        using var client = factory.CreateClientAs(Author);
 
         var created = await client.PostAsJsonAsync(
             ApiRoutes.Players,
@@ -95,7 +98,7 @@ public class PlayerApiTests(PostgresFixture postgres) : IAsyncLifetime
     {
         await SeedCommunityAsync();
 
-        using var client = factory.CreateClientAs("ada");
+        using var client = factory.CreateClientAs(Author);
 
         await client.PostAsJsonAsync(ApiRoutes.Players, Request("Ada Lovelace"), TestContext.Current.CancellationToken);
 
@@ -113,7 +116,7 @@ public class PlayerApiTests(PostgresFixture postgres) : IAsyncLifetime
     {
         await SeedCommunityAsync();
 
-        using var client = factory.CreateClientAs("ada");
+        using var client = factory.CreateClientAs(Author);
 
         var id = await CreateAsync(client, "Ada Lovelace");
 
@@ -150,7 +153,7 @@ public class PlayerApiTests(PostgresFixture postgres) : IAsyncLifetime
     {
         await SeedCommunityAsync();
 
-        using var client = factory.CreateClientAs("ada");
+        using var client = factory.CreateClientAs(Author);
 
         var id = await CreateAsync(client, "Ada Lovelace");
         await GiveThemAHistoryAsync(id);
@@ -184,7 +187,7 @@ public class PlayerApiTests(PostgresFixture postgres) : IAsyncLifetime
     {
         await SeedCommunityAsync();
 
-        using var client = factory.CreateClientAs("ada");
+        using var client = factory.CreateClientAs(Author);
 
         var id = await CreateAsync(client, "Ada Lovelace");
 
@@ -202,7 +205,7 @@ public class PlayerApiTests(PostgresFixture postgres) : IAsyncLifetime
         var communityId = await SeedCommunityAsync();
         var otherCommunityId = await SeedCommunityAsync("Other beach", "other-beach");
 
-        using var client = factory.CreateClientAs("ada");
+        using var client = factory.CreateClientAs(Author);
 
         var id = await CreateAsync(client, "Ada Lovelace");
 
@@ -252,7 +255,7 @@ public class PlayerApiTests(PostgresFixture postgres) : IAsyncLifetime
     {
         await SeedCommunityAsync();
 
-        using var client = factory.CreateClientAs("ada");
+        using var client = factory.CreateClientAs(Author);
 
         await CreateAsync(client, "Ada Lovelace");
 
@@ -277,11 +280,17 @@ public class PlayerApiTests(PostgresFixture postgres) : IAsyncLifetime
         return await response.Content.ReadFromJsonAsync<Guid>(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// The roster minus whoever is signed in: signing in makes you a player of this community, and
+    /// these tests are about the people the test itself put there.
+    /// </summary>
     private static async Task<List<PlayerSummary>> ListAsync(HttpClient client, bool includeRetired = false)
     {
         var url = includeRetired ? $"{ApiRoutes.Players}?includeRetired=true" : ApiRoutes.Players;
 
-        return await client.GetFromJsonAsync<List<PlayerSummary>>(url, TestContext.Current.CancellationToken) ?? [];
+        var roster = await client.GetFromJsonAsync<List<PlayerSummary>>(url, TestContext.Current.CancellationToken) ?? [];
+
+        return [.. roster.Where(p => p.Slug != Author)];
     }
 
     private async Task<Guid> SeedCommunityAsync(string name = "Tuesday round", string slug = "tuesday-round")
