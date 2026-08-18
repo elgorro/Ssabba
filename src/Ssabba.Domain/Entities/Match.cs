@@ -71,6 +71,12 @@ public class Match
 
     public int TiebreakPoints { get; set; }
 
+    /// <summary>
+    /// How long a participant may go on correcting this result, in minutes from when it was entered.
+    /// <c>null</c> inherits the community's setting; <c>0</c> leaves amending to organisers alone.
+    /// </summary>
+    public int? AmendWindowMinutes { get; set; }
+
     public DateTimeOffset? DeletedAt { get; set; }
 
     public ICollection<MatchSet> Sets { get; set; } = [];

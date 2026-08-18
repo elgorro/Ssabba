@@ -116,6 +116,12 @@ their own first sign-in.
 player carries a rating and a match history, and an account nobody has vouched for must not
 inherit either by matching a name. Adopting one is a deliberate act, and needs a flow of its own.
 
+**The role authorises, the status gates it.** `CommunityRole` runs Guest, Member, Organizer, Admin,
+Owner in that order, so a permission is a comparison rather than a list. `MembershipStatus` is asked
+first: a membership that is pending, suspended or left carries no permission at all, whatever its
+role says. `Community.AmendWindowMinutes` is the one permission expressed as time rather than as
+role — how long somebody who played may go on correcting that result — and a match may override it.
+
 **One profile row per player**, keyed by `PlayerId` itself — a shared primary key, cascading from
 `Player`.
 

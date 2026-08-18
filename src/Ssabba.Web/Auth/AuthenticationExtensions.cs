@@ -2,8 +2,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using Ssabba.Infrastructure;
 
@@ -92,7 +94,14 @@ public static class AuthenticationExtensions
                 };
             });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options => options.AddSsabbaPolicies());
+        services.AddScoped<IAuthorizationHandler, CommunityRoleHandler>();
+        services.AddScoped<IAuthorizationHandler, AmendMatchHandler>();
+
+        // The one clock the app has. Registered so a test can hand it a different one — the amend
+        // window is otherwise only testable by waiting.
+        services.TryAddSingleton(TimeProvider.System);
+
         services.AddHttpContextAccessor();
         services.AddScoped<CurrentPlayerAccessor>();
         services.AddCascadingAuthenticationState();

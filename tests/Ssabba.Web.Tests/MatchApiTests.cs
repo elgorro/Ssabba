@@ -488,6 +488,199 @@ public class MatchApiTests(PostgresFixture postgres) : IAsyncLifetime
         Assert.Contains($"matches/{id}", html, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Recording_a_match_needs_more_than_an_account()
+    {
+        // No community, so nobody has a membership: an account on its own authorizes nothing.
+        using var client = factory.CreateClientAs("zoe");
+
+        var response = await client.PostAsJsonAsync(
+            ApiRoutes.Matches,
+            Request(Guid.NewGuid(), Guid.NewGuid()),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(CommunityRole.Guest, MembershipStatus.Active)]
+    [InlineData(CommunityRole.Member, MembershipStatus.Pending)]
+    [InlineData(CommunityRole.Member, MembershipStatus.Suspended)]
+    public async Task A_membership_that_does_not_count_may_not_record(CommunityRole role, MembershipStatus status)
+    {
+        await SeedAsync();
+
+        using var organizer = factory.CreateClientAs("ada");
+
+        var (home, away) = await TwoTeamsAsync(organizer);
+
+        await SeedMemberAsync("kim", role, status);
+
+        using var client = factory.CreateClientAs("kim");
+
+        var response = await client.PostAsJsonAsync(
+            ApiRoutes.Matches,
+            Request(home, away, (21, 18), (21, 15)),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task An_ordinary_member_may_record_a_result()
+    {
+        await SeedAsync();
+
+        using var organizer = factory.CreateClientAs("ada");
+
+        var (home, away) = await TwoTeamsAsync(organizer);
+
+        await SeedMemberAsync("kim");
+
+        using var client = factory.CreateClientAs("kim");
+
+        var id = await RecordAsync(client, home, away, (21, 18), (21, 15));
+
+        await using var db = postgres.CreateDbContext();
+
+        var recorded = await db.Matches.SingleAsync(m => m.Id == id, TestContext.Current.CancellationToken);
+        var kim = await db.CommunityMembers
+            .SingleAsync(m => m.Player!.SubjectId == TestAuthHandler.SubjectFor("kim"),
+                TestContext.Current.CancellationToken);
+
+        // A result is signed, so who entered it is answerable for it.
+        Assert.Equal(kim.Id, recorded.RecordedByMemberId);
+    }
+
+    [Fact]
+    public async Task A_member_who_did_not_play_may_not_amend_the_result()
+    {
+        await SeedAsync();
+
+        using var organizer = factory.CreateClientAs("ada");
+
+        var (home, away) = await TwoTeamsAsync(organizer);
+        var id = await RecordAsync(organizer, home, away, (21, 18), (21, 15));
+
+        await SeedMemberAsync("kim");
+
+        // Snapshotted with kim already on the roster, so what is compared is the ratings and not
+        // the arrival of a member.
+        var before = await RatingsAsync();
+
+        using var client = factory.CreateClientAs("kim");
+
+        var corrected = await CorrectAsync(client, id, home, away);
+        var struck = await client.DeleteAsync(
+            $"{ApiRoutes.Matches}/{id}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, corrected.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, struck.StatusCode);
+
+        // The point of the refusal: a rewrite here would have moved four other people's ratings.
+        Assert.Equal(before, await RatingsAsync());
+    }
+
+    [Fact]
+    public async Task Somebody_who_played_may_fix_their_own_result()
+    {
+        await SeedAsync();
+
+        using var organizer = factory.CreateClientAs("ada");
+
+        var nina = await SeedMemberAsync("nina");
+        var home = await LineupAsync(organizer, nina, await NewPlayerAsync(organizer, "Grace Hopper"));
+        var away = await TeamAsync(organizer, "Alan Turing", "Edsger Dijkstra");
+
+        var id = await RecordAsync(organizer, home, away, (21, 18), (21, 15));
+
+        using var client = factory.CreateClientAs("nina");
+
+        var response = await CorrectAsync(client, id, home, away);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_window_closes_on_somebody_who_played()
+    {
+        await SeedAsync();
+        await SetCommunityWindowAsync(60 * 60);
+
+        using var organizer = factory.CreateClientAs("ada");
+
+        var nina = await SeedMemberAsync("nina");
+        var home = await LineupAsync(organizer, nina, await NewPlayerAsync(organizer, "Grace Hopper"));
+        var away = await TeamAsync(organizer, "Alan Turing", "Edsger Dijkstra");
+
+        var id = await RecordAsync(organizer, home, away, (21, 18), (21, 15));
+
+        factory.Clock.Advance(TimeSpan.FromHours(61));
+
+        using var client = factory.CreateClientAs("nina");
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await CorrectAsync(client, id, home, away)).StatusCode);
+
+        // The organiser is not on a clock: running matches is the job.
+        Assert.Equal(HttpStatusCode.NoContent, (await CorrectAsync(organizer, id, home, away)).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_match_sets_its_own_window_over_the_community_one()
+    {
+        await SeedAsync();
+
+        // The group leaves corrections to organisers by default.
+        await SetCommunityWindowAsync(0);
+
+        using var organizer = factory.CreateClientAs("ada");
+
+        var nina = await SeedMemberAsync("nina");
+        var home = await LineupAsync(organizer, nina, await NewPlayerAsync(organizer, "Grace Hopper"));
+        var away = await TeamAsync(organizer, "Alan Turing", "Edsger Dijkstra");
+
+        var shut = await RecordAsync(organizer, home, away, (21, 18), (21, 15));
+
+        using var client = factory.CreateClientAs("nina");
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await CorrectAsync(client, shut, home, away)).StatusCode);
+
+        // Recorded with an evening's grace of its own, the same person may fix the same pairing.
+        var open = await RecordWithWindowAsync(organizer, home, away, minutes: 12 * 60);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await CorrectAsync(client, open, home, away)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Amending_a_match_this_community_does_not_have_is_not_found()
+    {
+        await SeedAsync();
+
+        using var client = factory.CreateClientAs("ada");
+
+        var response = await client.DeleteAsync(
+            $"{ApiRoutes.Matches}/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
+
+        // Not found before forbidden, which gives nothing away: reading a match needs no account.
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    private static async Task<Guid> RecordWithWindowAsync(
+        HttpClient client,
+        Guid home,
+        Guid away,
+        int minutes)
+    {
+        var response = await client.PostAsJsonAsync(
+            ApiRoutes.Matches,
+            Request(home, away, (21, 18), (21, 15)) with { AmendWindowMinutes = minutes },
+            TestContext.Current.CancellationToken);
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<Guid>(TestContext.Current.CancellationToken);
+    }
+
     private static async Task<Guid> PlayerIdAsync(HttpClient client, string displayName)
     {
         var players = await client.GetFromJsonAsync<List<PlayerSummary>>(
@@ -556,18 +749,30 @@ public class MatchApiTests(PostgresFixture postgres) : IAsyncLifetime
 
         foreach (var name in names)
         {
-            var created = await client.PostAsJsonAsync(
-                ApiRoutes.Players,
-                new CreatePlayerRequest(
-                    name, Slug: null, PreferredTimeZone: null, Locale: null,
-                    Nickname: null, Role: null, Profile: null),
-                TestContext.Current.CancellationToken);
-
-            created.EnsureSuccessStatusCode();
-
-            playerIds.Add(await created.Content.ReadFromJsonAsync<Guid>(TestContext.Current.CancellationToken));
+            playerIds.Add(await NewPlayerAsync(client, name));
         }
 
+        return await LineupAsync(client, [.. playerIds]);
+    }
+
+    /// <summary>Somebody entered by hand, with no account of their own.</summary>
+    private static async Task<Guid> NewPlayerAsync(HttpClient client, string name)
+    {
+        var created = await client.PostAsJsonAsync(
+            ApiRoutes.Players,
+            new CreatePlayerRequest(
+                name, Slug: null, PreferredTimeZone: null, Locale: null,
+                Nickname: null, Role: null, Profile: null),
+            TestContext.Current.CancellationToken);
+
+        created.EnsureSuccessStatusCode();
+
+        return await created.Content.ReadFromJsonAsync<Guid>(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>A lineup made of players who already exist — the ones who have an account.</summary>
+    private static async Task<Guid> LineupAsync(HttpClient client, params Guid[] playerIds)
+    {
         var response = await client.PostAsJsonAsync(
             ApiRoutes.Teams,
             new CreateTeamRequest(null, true, playerIds),
@@ -577,6 +782,66 @@ public class MatchApiTests(PostgresFixture postgres) : IAsyncLifetime
 
         return await response.Content.ReadFromJsonAsync<Guid>(TestContext.Current.CancellationToken);
     }
+
+    /// <summary>
+    /// Signs someone in ahead of time, at a standing of the test's choosing. Provisioning finds this
+    /// row by its subject when they first call, so it leaves the role and status alone — which is
+    /// how a test gets a Guest, or somebody suspended, without an endpoint to demote them yet.
+    /// </summary>
+    private async Task<Guid> SeedMemberAsync(
+        string user,
+        CommunityRole role = CommunityRole.Member,
+        MembershipStatus status = MembershipStatus.Active)
+    {
+        await using var db = postgres.CreateDbContext();
+
+        var communityId = await db.Communities
+            .Select(c => c.Id)
+            .SingleAsync(TestContext.Current.CancellationToken);
+
+        var player = new Player
+        {
+            DisplayName = user,
+            Slug = user,
+            SubjectId = TestAuthHandler.SubjectFor(user),
+        };
+
+        db.Players.Add(player);
+        db.CommunityMembers.Add(new CommunityMember
+        {
+            CommunityId = communityId,
+            PlayerId = player.Id,
+            Role = role,
+            Status = status,
+        });
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        return player.Id;
+    }
+
+    private async Task SetCommunityWindowAsync(int? minutes)
+    {
+        await using var db = postgres.CreateDbContext();
+
+        var community = await db.Communities.SingleAsync(TestContext.Current.CancellationToken);
+
+        community.AmendWindowMinutes = minutes;
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static Task<HttpResponseMessage> CorrectAsync(
+        HttpClient client,
+        Guid id,
+        Guid home,
+        Guid away) =>
+        client.PutAsJsonAsync(
+            $"{ApiRoutes.Matches}/{id}",
+            new UpdateMatchRequest(
+                DateTimeOffset.UtcNow, null, null, home, away,
+                [new SetScore(1, 21, 19), new SetScore(2, 21, 15)]),
+            TestContext.Current.CancellationToken);
 
     /// <summary>
     /// A community and the 2v2 format. Both are seeded by migrations, and resetting the database
@@ -602,6 +867,10 @@ public class MatchApiTests(PostgresFixture postgres) : IAsyncLifetime
         }
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // "ada" runs this round. Most of what follows records a result and then corrects it, which
+        // is an organiser's job — a plain member may only fix what they themselves played.
+        await SeedMemberAsync("ada", CommunityRole.Organizer);
     }
 
     public ValueTask DisposeAsync()

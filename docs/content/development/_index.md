@@ -96,6 +96,36 @@ sign-in, it calls `PlayerProvisioner.EnsureAsync` itself. So a test client creat
 `CreateClientAs("ada")` is a real player on the roster, not a bare claims principal — worth
 remembering when a roster assertion counts one more row than the test put there.
 
+## What a request is allowed to do
+
+Roles live on the membership, so authorization asks `CurrentPlayerAccessor`, never the `roles` claim
+— Keycloak's realm roles say what somebody is on this instance, and `CommunityMember.Role` is what
+they may do here. `CommunityRole` is ordered from Guest to Owner precisely so a policy can be a
+comparison rather than a list of names to keep in step.
+
+Two policies cover standing (`src/Ssabba.Web/Auth/CommunityAuthorization.cs`), and both require the
+membership to be `Active` — a pending or suspended one carries nothing, whatever its role:
+
+```csharp
+group.MapPost("/", …).RequireAuthorization(CommunityPolicies.ActiveMember);   // Member and above
+group.MapPut("/",  …).RequireAuthorization(CommunityPolicies.Administrator);  // Admin and above
+```
+
+A rung in between is one `CommunityRoleRequirement` away; add the policy when something needs it.
+
+The third is about one particular row rather than about standing, so it is authorized against a
+resource. Amending a match is the case: an organiser may amend any result, and everybody else only
+one they played in, and only inside the correction window.
+
+```csharp
+var context = await MatchQueries.AmendContextAsync(db, communityId, id, ct);
+var allowed = await authorization.AuthorizeAsync(http.User, context, CommunityPolicies.AmendMatch);
+```
+
+Reach for the resource form when the answer depends on the row — who is in it, how old it is, what
+it configures. Reach for the standing form when it does not. A 404 for a row that is not there comes
+before either, which gives nothing away as long as reading it needs no account.
+
 ## Writing docs
 
 This wiki is Hugo. With the dev override running, `http://localhost:1313/docs/` live-reloads.

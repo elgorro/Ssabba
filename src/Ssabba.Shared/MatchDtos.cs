@@ -45,7 +45,13 @@ public record CreateMatchRequest(
     string? LocationNote,
     Guid HomeTeamId,
     Guid AwayTeamId,
-    IReadOnlyList<SetScore> Sets);
+    IReadOnlyList<SetScore> Sets,
+    /// <summary>
+    /// Minutes the people who played may go on correcting this one, overriding the community's
+    /// setting. Left null it inherits; there is no counterpart on the update payload, because an
+    /// edit that could extend its own deadline is no deadline.
+    /// </summary>
+    int? AmendWindowMinutes = null);
 
 public record SetScore(int Number, int HomePoints, int AwayPoints);
 

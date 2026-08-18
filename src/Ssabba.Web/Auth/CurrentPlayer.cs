@@ -15,7 +15,15 @@ public sealed record CurrentPlayer(
     string Slug,
     Guid? CommunityId,
     Guid? CommunityMemberId,
-    CommunityRole? Role);
+    CommunityRole? Role,
+    MembershipStatus? Status)
+{
+    /// <summary>
+    /// Standing enough to act here: a membership that has been accepted and not suspended. Role is
+    /// a separate question — this only says the membership itself counts.
+    /// </summary>
+    public bool IsActiveMember => Status == MembershipStatus.Active && CommunityId is not null;
+}
 
 /// <summary>
 /// Resolves <see cref="CurrentPlayer"/> for the request in hand, once. The row itself is written at
@@ -63,7 +71,7 @@ public sealed class CurrentPlayerAccessor(
                 Membership = p.Memberships
                     .Where(m => m.Status != MembershipStatus.Left)
                     .OrderBy(m => m.JoinedAt)
-                    .Select(m => new { m.CommunityId, MemberId = m.Id, m.Role })
+                    .Select(m => new { m.CommunityId, MemberId = m.Id, m.Role, m.Status })
                     .FirstOrDefault(),
             })
             .FirstOrDefaultAsync(ct);
@@ -76,7 +84,8 @@ public sealed class CurrentPlayerAccessor(
                 row.Slug,
                 row.Membership?.CommunityId,
                 row.Membership?.MemberId,
-                row.Membership?.Role);
+                row.Membership?.Role,
+                row.Membership?.Status);
 
         return resolved;
     }
