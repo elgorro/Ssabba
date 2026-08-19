@@ -26,7 +26,7 @@ services:
 
   docs:
     build: !reset null
-    image: ghcr.io/gohugoio/hugo:v0.164.0
+    image: ghcr.io/gohugoio/hugo:v0.165.0
     working_dir: /project
     command: ["server", "--bind", "0.0.0.0", "--port", "8080", "--baseURL", "http://localhost:1313/docs/", "--appendPort=false"]
     volumes:
