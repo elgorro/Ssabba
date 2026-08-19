@@ -1,6 +1,6 @@
 # The hugo-book theme needs Hugo >= 0.158, so build with the official image.
 # That image declares VOLUME /project, so build outside it — writes to /project are discarded.
-FROM ghcr.io/gohugoio/hugo:v0.164.0 AS build
+FROM ghcr.io/gohugoio/hugo:v0.165.0 AS build
 USER root
 WORKDIR /src
 COPY . .
