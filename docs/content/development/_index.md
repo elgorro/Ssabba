@@ -5,6 +5,9 @@ weight: 30
 
 # Development
 
+Before anything else, check you have what the build expects:
+[Requirements]({{< relref "requirements" >}}).
+
 ## Build and test
 
 ```bash

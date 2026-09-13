@@ -5,16 +5,14 @@ weight: 20
 
 # Self-hosting Ssabba
 
-## Requirements
-
-- A machine with Docker and the Compose plugin.
-- A DNS record pointing at it (needed for Let's Encrypt certificates).
-- Ports 80 and 443 reachable from the internet.
+A Linux machine with Docker, a DNS record pointing at it, and ports 80 and 443 reachable from the
+internet. The detail — versions, how much machine, what the stack asks of the host — is in
+[Requirements]({{< relref "requirements" >}}).
 
 ## First run
 
 ```bash
-git clone https://github.com/OWNER/ssabba.git
+git clone --recurse-submodules https://github.com/OWNER/ssabba.git
 cd ssabba/deploy
 cp .env.example .env
 $EDITOR .env          # set APP_DOMAIN, ACME_EMAIL and every change-me secret
